@@ -17,9 +17,14 @@ namespace Pomodoro
         private static readonly SolidColorBrush ActiveTabBrush =
             new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF));
 
+        // Focus mode: the widget goes near-black and strips to just the banner + timer while running.
+        private static readonly Color FocusBackgroundColor = Color.FromRgb(0x0D, 0x0D, 0x0D);
+        private static readonly SolidColorBrush FocusBackgroundBrush = new SolidColorBrush(FocusBackgroundColor);
+
         private readonly SettingsService settings = new SettingsService(new SettingsStore());
         private readonly AutoStartManager autoStartManager = new AutoStartManager();
         private readonly ITodoistGateway gateway = new HttpTodoistGateway();
+        private readonly ISessionLog sessionLog = new JsonSessionLog();
         private readonly TaskListModel taskList;
         private readonly PomodoroSession session;
 
@@ -30,7 +35,7 @@ namespace Pomodoro
             InitializeComponent();
 
             taskList = new TaskListModel(gateway, settings);
-            session = new PomodoroSession(settings.Current, new DispatcherClock());
+            session = new PomodoroSession(settings.Current, new DispatcherClock(), sessionLog);
 
             session.Changed += Render;
             session.Finished += OnSessionFinished;
@@ -85,6 +90,12 @@ namespace Pomodoro
             {
                 SystemSounds.Asterisk.Play();
             }
+        }
+
+        private void OnHeatmapClick(object sender, RoutedEventArgs eventArgs)
+        {
+            StatsWindow dialog = new StatsWindow(sessionLog) { Owner = this };
+            dialog.ShowDialog();
         }
 
         // ---- Window chrome ----
@@ -163,19 +174,44 @@ namespace Pomodoro
 
         private void Render()
         {
+            bool isFocusMode = session.IsRunning;
             Color modeColor = ModeTheme.For(session.CurrentMode).Background;
-            RootBorder.Background = new SolidColorBrush(modeColor);
-            StartButton.Foreground = new SolidColorBrush(modeColor);
+
+            RootBorder.Background = isFocusMode ? FocusBackgroundBrush : new SolidColorBrush(modeColor);
+            StartButton.Foreground = new SolidColorBrush(isFocusMode ? FocusBackgroundColor : modeColor);
 
             StyleTab(TabPomodoro, session.CurrentMode == TimerMode.Pomodoro);
             StyleTab(TabShort, session.CurrentMode == TimerMode.ShortBreak);
             StyleTab(TabLong, session.CurrentMode == TimerMode.LongBreak);
 
+            ApplyFocusMode(isFocusMode);
+
             int minutes = session.RemainingSeconds / 60;
             int seconds = session.RemainingSeconds % 60;
             TimeText.Text = $"{minutes:00}:{seconds:00}";
-            StartButton.Content = session.IsRunning ? "PAUSE" : "START";
+            StartButton.Content = isFocusMode ? "PAUSE" : "START";
             Title = $"{TimeText.Text} · Pomodoro";
+
+            RenderStreak();
+        }
+
+        private void ApplyFocusMode(bool isFocusMode)
+        {
+            // The mode tabs and chrome go away (switching is blocked while running anyway),
+            // but the task list stays visible so you can see what to work on.
+            Visibility chromeVisibility = isFocusMode ? Visibility.Collapsed : Visibility.Visible;
+            TopRow.Visibility = chromeVisibility;
+            HeatmapButton.Visibility = chromeVisibility;
+
+            FocusLabel.Visibility = isFocusMode ? Visibility.Visible : Visibility.Collapsed;
+            FocusLabel.Text = session.CurrentMode == TimerMode.Pomodoro ? "FOCUS MODE" : "BREAK";
+        }
+
+        private void RenderStreak()
+        {
+            int streak = SessionStats.CurrentStreak(sessionLog.All(), DateTime.Now);
+            HeatmapButton.Content = streak == 0 ? "🔥" : $"🔥 {streak}";
+            HeatmapButton.ToolTip = streak == 0 ? "Focus stats" : $"Focus stats · {streak}-day streak";
         }
 
         private static void StyleTab(Button tab, bool isActive)

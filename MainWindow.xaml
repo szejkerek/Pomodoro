@@ -19,7 +19,7 @@
         <StackPanel>
 
             <!-- Refresh · mode tabs · settings (single row) -->
-            <Grid Margin="0,0,0,6">
+            <Grid x:Name="TopRow" Margin="0,0,0,6">
                 <Button x:Name="SyncButton" Style="{StaticResource IconButton}"
                         Content="↻" HorizontalAlignment="Left"
                         ToolTip="Refresh tasks from Todoist" Click="OnSyncClick"/>
@@ -33,6 +33,11 @@
                         ToolTip="Settings" Click="OnSettingsClick"/>
             </Grid>
 
+            <!-- Focus banner (only while the timer runs) -->
+            <TextBlock x:Name="FocusLabel" Text="FOCUS MODE" Foreground="White"
+                       FontSize="15" FontWeight="Bold" HorizontalAlignment="Center"
+                       Opacity="0.65" Margin="0,4,0,0" Visibility="Collapsed"/>
+
             <!-- Time -->
             <TextBlock x:Name="TimeText" Text="25:00" Foreground="White"
                        FontSize="64" FontWeight="Bold" HorizontalAlignment="Center"
@@ -40,10 +45,20 @@
 
             <!-- Start / pause / reset -->
             <Grid Margin="0,0,0,8">
-                <Button x:Name="StartButton" Content="START" Click="OnStartClick"
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="HeatmapButton" Grid.Column="0" Style="{StaticResource IconButton}"
+                        Content="🔥" FontSize="14" FontWeight="SemiBold"
+                        Width="Auto" MinWidth="36" Height="36" Padding="8,0"
+                        HorizontalAlignment="Left" VerticalAlignment="Center"
+                        ToolTip="Focus stats" Click="OnHeatmapClick"/>
+                <Button x:Name="StartButton" Grid.Column="1" Content="START" Click="OnStartClick"
                         HorizontalAlignment="Center"
                         Cursor="Hand" Foreground="#BA4949" FontSize="18" FontWeight="Bold"
-                        Padding="48,8">
+                        Padding="40,8">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="bg" Background="White" CornerRadius="8"
@@ -62,14 +77,14 @@
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
-                <Button x:Name="ResetButton" Style="{StaticResource IconButton}"
+                <Button x:Name="ResetButton" Grid.Column="2" Style="{StaticResource IconButton}"
                         Content="↺" FontSize="18" Width="36" Height="36"
                         HorizontalAlignment="Right" VerticalAlignment="Center"
                         ToolTip="Reset" Click="OnResetClick"/>
             </Grid>
 
             <!-- Tasks -->
-            <Border Background="#2E000000" CornerRadius="10" Padding="8">
+            <Border x:Name="TasksPanel" Background="#2E000000" CornerRadius="10" Padding="8">
                 <StackPanel>
                     <Grid Margin="2,2,2,6">
                         <TextBlock Text="TASKS" Foreground="White" Opacity="0.6"
