@@ -36,7 +36,7 @@ namespace Pomodoro.Tests
             await model.SyncAsync();
 
             Assert.Equal(2, model.Projects.Count);
-            Assert.Equal("Wszystkie", model.Projects[0].Name);
+            Assert.Equal("All", model.Projects[0].Name);
             Assert.Single(model.Tasks);
         }
 

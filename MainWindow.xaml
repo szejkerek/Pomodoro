@@ -22,15 +22,15 @@
             <Grid Margin="0,0,0,6">
                 <Button x:Name="SyncButton" Style="{StaticResource IconButton}"
                         Content="↻" HorizontalAlignment="Left"
-                        ToolTip="Odśwież zadania z Todoist" Click="OnSyncClick"/>
+                        ToolTip="Refresh tasks from Todoist" Click="OnSyncClick"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <Button x:Name="TabPomodoro" Style="{StaticResource ModeTab}" Content="Pomodoro" Click="OnModeTabClick"/>
-                    <Button x:Name="TabShort" Style="{StaticResource ModeTab}" Content="Krótka" Click="OnModeTabClick"/>
-                    <Button x:Name="TabLong" Style="{StaticResource ModeTab}" Content="Długa" Click="OnModeTabClick"/>
+                    <Button x:Name="TabShort" Style="{StaticResource ModeTab}" Content="Short" Click="OnModeTabClick"/>
+                    <Button x:Name="TabLong" Style="{StaticResource ModeTab}" Content="Long" Click="OnModeTabClick"/>
                 </StackPanel>
                 <Button x:Name="SettingsButton" Style="{StaticResource IconButton}"
                         Content="⚙" HorizontalAlignment="Right"
-                        ToolTip="Ustawienia" Click="OnSettingsClick"/>
+                        ToolTip="Settings" Click="OnSettingsClick"/>
             </Grid>
 
             <!-- Time -->
@@ -72,7 +72,7 @@
             <Border Background="#2E000000" CornerRadius="10" Padding="8">
                 <StackPanel>
                     <Grid Margin="2,2,2,6">
-                        <TextBlock Text="ZADANIA" Foreground="White" Opacity="0.6"
+                        <TextBlock Text="TASKS" Foreground="White" Opacity="0.6"
                                    FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         <ComboBox x:Name="ProjectSelector" HorizontalAlignment="Right"
                                   MinWidth="150" MaxWidth="180"
@@ -80,7 +80,7 @@
                                   ItemContainerStyle="{StaticResource ProjectComboItem}"
                                   SelectedValuePath="Id"
                                   SelectionChanged="OnProjectChanged"
-                                  ToolTip="Wybierz projekt Todoist">
+                                  ToolTip="Select Todoist project">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Name}" Foreground="White"
@@ -121,7 +121,7 @@
                     </ScrollViewer>
                     <TextBlock x:Name="TasksHint" Foreground="White" Opacity="0.5"
                                FontSize="11" TextWrapping="Wrap" Margin="4,4,4,2"
-                               Text="Dodaj token Todoist w ustawieniach (⚙), aby zobaczyć zadania."/>
+                               Text="Add a Todoist token in settings (⚙) to see your tasks."/>
                 </StackPanel>
             </Border>
 

@@ -10,8 +10,8 @@ namespace Pomodoro.Services
     /// </summary>
     public sealed class TaskListModel
     {
-        public const string TokenMissingHint = "Dodaj token Todoist w ustawieniach (⚙), aby zobaczyć zadania.";
-        private const string AllProjectsName = "Wszystkie";
+        public const string TokenMissingHint = "Add a Todoist token in settings (⚙) to see your tasks.";
+        private const string AllProjectsName = "All";
 
         private readonly ITodoistGateway gateway;
         private readonly SettingsService settings;
@@ -63,7 +63,7 @@ namespace Pomodoro.Services
             }
             catch (Exception error)
             {
-                SetHint($"Nie udało się odznaczyć: {error.Message}");
+                SetHint($"Could not complete task: {error.Message}");
             }
         }
 
@@ -88,7 +88,7 @@ namespace Pomodoro.Services
             }
             catch (Exception error)
             {
-                SetHint($"Błąd Todoist (projekty): {error.Message}");
+                SetHint($"Todoist error (projects): {error.Message}");
             }
         }
 
@@ -105,11 +105,11 @@ namespace Pomodoro.Services
                     Tasks.Add(task);
                 }
 
-                SetHint(Tasks.Count == 0 ? "Brak zadań. 🎉" : string.Empty);
+                SetHint(Tasks.Count == 0 ? "No tasks." : string.Empty);
             }
             catch (Exception error)
             {
-                SetHint($"Błąd Todoist: {error.Message}");
+                SetHint($"Todoist error: {error.Message}");
             }
         }
 

@@ -1,36 +1,36 @@
-# 🍅 Pomodoro
+# Pomodoro
 
-Minimalistyczny, zawsze-na-wierzchu widget Pomodoro dla Windows. WPF, .NET 10, zero zależności NuGet. Opcjonalna integracja z Todoist.
+A minimalist, always-on-top Pomodoro widget for Windows. Built with WPF on .NET 10, with no NuGet dependencies in the app project. Includes optional Todoist integration.
 
-## Funkcje
+## Features
 
-- **Borderless + always-on-top** — brak ramki Windows (min/max/close). Okno przeciągasz klikając w tło.
-- **Autorun** — startuje z Windowsem (wpis w `HKCU\...\Run`, przełącznik w ustawieniach).
-- **Tryby** — Pomodoro / krótka przerwa / długa przerwa; auto-długa-przerwa co N pomodoro.
-- **Auto-start** przerw i pomodoro (opcjonalnie), dźwięk na koniec.
-- **Todoist** — lista zadań (API v1), klik = odznaczenie (zamknięcie taska). Opcjonalny filtr (np. `today`, `#Praca`).
-- Konfiguracja i pozycja okna zapisywane w `%APPDATA%\Pomodoro\settings.json`.
+- Borderless, always-on-top window. No Windows chrome (minimize/maximize/close); drag the window by clicking its background.
+- Launch at login via an `HKCU\...\Run` registry entry, toggled in settings.
+- Three modes: Pomodoro, short break, long break. A long break replaces the short one every N completed pomodoros.
+- Optional auto-start of breaks and pomodoros, plus a sound when a mode ends.
+- Todoist task list (unified API v1). Click a task to complete it. Optional filter (for example `today` or `#Work`).
+- Configuration and window position are stored in `%APPDATA%\Pomodoro\settings.json`.
 
-## Wymagania
+## Requirements
 
-- Windows 10/11
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) (do budowania)
+- Windows 10 or 11
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) to build
 
-## Instalacja i uruchomienie
+## Build and run
 
 ```powershell
 git clone <repo-url>
 cd Pomodoro
 
-# Szybkie uruchomienie
+# Run directly
 dotnet run -c Release
 
-# Albo zbuduj exe
+# Or build the executable
 dotnet build -c Release
 # -> bin\Release\net10.0-windows\Pomodoro.exe
 ```
 
-Zalecane do autostartu — pojedynczy, samodzielny plik:
+For autostart, a single self-contained file is recommended:
 
 ```powershell
 dotnet publish -c Release -r win-x64 --self-contained false `
@@ -38,61 +38,64 @@ dotnet publish -c Release -r win-x64 --self-contained false `
 # -> publish\Pomodoro.exe
 ```
 
-## Jak używać
+## Usage
 
 ### Timer
 
-- **START / PAUZA** — uruchamia i zatrzymuje odliczanie.
-- **Reset** — przywraca pełny czas bieżącego trybu.
-- **Zakładki trybów** (Pomodoro / krótka / długa przerwa) — ręczne przełączanie. Aktywny tryb jest podświetlony, a tło okna zmienia kolor.
-- Po zejściu do zera odtwarza się dźwięk (jeśli włączony) i timer przechodzi do następnego trybu. Co `LongBreakInterval` pomodoro zamiast krótkiej przerwy włącza się długa.
-- **Przeciąganie okna** — kliknij i przytrzymaj na tle, przesuń. Pozycja zapisuje się przy zamknięciu.
+- START / PAUSE starts and stops the countdown.
+- Reset restores the full duration of the current mode.
+- The mode tabs (Pomodoro, short break, long break) switch modes manually. The active mode is highlighted and the window background changes color.
+- When the timer reaches zero, a sound plays (if enabled) and the timer advances to the next mode. Every `LongBreakInterval` pomodoros, a long break runs instead of a short one.
+- Drag the window by clicking and holding its background. The position is saved on close.
 
-### Ustawienia (⚙)
+### Settings
 
-W oknie ustawień skonfigurujesz:
+The settings window configures:
 
-- Długości: Pomodoro, krótka przerwa, długa przerwa.
-- `LongBreakInterval` — co ile pomodoro wpada długa przerwa.
-- Auto-start przerw / auto-start pomodoro.
-- Dźwięk na koniec (wł./wył.).
-- Start z Windowsem.
-- Token i filtr Todoist.
+- Durations for Pomodoro, short break, and long break.
+- `LongBreakInterval`: how many pomodoros precede a long break.
+- Auto-start of breaks and auto-start of pomodoros.
+- End-of-mode sound on or off.
+- Launch at login.
+- Todoist token and filter.
 
-Zmiany zapisują się po zatwierdzeniu i od razu wchodzą w życie.
+Changes are saved on confirmation and take effect immediately.
 
-### Todoist (opcjonalnie)
+### Todoist (optional)
 
-1. Pobierz token API: Todoist → **Ustawienia → Integracje → Deweloper → API token**.
-2. Wklej token w ustawieniach widgetu (⚙).
-3. Lista zadań pojawi się w oknie. Wybierz projekt z listy rozwijanej albo zostaw „Wszystkie".
-4. Opcjonalny **filtr** zawęża zadania składnią Todoist, np. `today`, `overdue`, `#Praca`. Wybór projektu ma pierwszeństwo nad filtrem.
-5. **Klik w zadanie = odznaczenie** (zamknięcie taska w Todoist).
-6. Przycisk sync odświeża listę.
+1. Get an API token from Todoist: Settings > Integrations > Developer > API token.
+2. Paste the token into the widget settings.
+3. The task list appears in the window. Pick a project from the dropdown or leave it set to all projects.
+4. An optional filter narrows tasks using Todoist filter syntax, for example `today`, `overdue`, or `#Work`. Project selection takes precedence over the filter.
+5. Click a task to complete it in Todoist.
+6. The sync button refreshes the list.
 
-> Token trzymany jest **tylko lokalnie** w `%APPDATA%\Pomodoro\settings.json`. Nie jest commitowany.
+The token is stored locally only, in `%APPDATA%\Pomodoro\settings.json`. It is never committed.
 
-## Testy
+## Tests
 
 ```powershell
 dotnet test Tests\Pomodoro.Tests.csproj
 ```
 
-## Architektura
+## Architecture
 
-| Plik / katalog | Rola |
-|----------------|------|
-| `Models/` | `AppSettings`, `TimerMode`, `TodoistTask`, `TodoistProject` i strony paginacji |
-| `Services/PomodoroEngine` | czysta maszyna stanu timera (bez UI) |
-| `Services/PomodoroSession` | moduł sesji: tick → koniec → auto-start, zdarzenia `Changed`/`Finished` |
-| `Services/HttpTodoistGateway` | Todoist API v1 (HttpClient, paginacja kursorowa) |
-| `Services/TaskListModel` | logika listy zadań (projekty, filtr, zaznaczenie, zamykanie) |
-| `Services/SettingsService` + `SettingsStore` | jedyne miejsce zapisu konfiguracji (JSON w `%APPDATA%`) |
-| `Services/AutoStartManager` | wpis w rejestrze `Run` |
-| `Presentation/ModeTheme` | kolory trybów |
-| `MainWindow` / `SettingsWindow` | widget / okno ustawień |
+The design separates a pure core from platform adapters behind interfaces, so the timer and task-list logic can be unit-tested without UI, threads, real time, network, or disk.
 
-## Uwagi
+| File or directory | Role |
+|-------------------|------|
+| `Models/` | `AppSettings`, `TimerMode`, `TodoistTask`, `TodoistProject`, and pagination pages |
+| `Services/PomodoroEngine` | Pure timer state machine (no UI, no threads) |
+| `Services/PomodoroSession` | Session module: tick to finish to auto-start, exposed via `Changed` and `Finished` events |
+| `Services/IClock`, `DispatcherClock` | One-second clock abstraction (test clock advances ticks synchronously) |
+| `Services/HttpTodoistGateway` | Todoist API v1 (HttpClient, cursor pagination) |
+| `Services/TaskListModel` | Task-list logic (projects, filter, selection, task completion) |
+| `Services/SettingsService`, `SettingsStore` | Single owner of live settings; the only place persistence happens (JSON in `%APPDATA%`) |
+| `Services/AutoStartManager` | Registry `Run` entry for launch at login |
+| `Presentation/ModeTheme` | Per-mode background colors |
+| `MainWindow`, `SettingsWindow` | The widget and the settings dialog |
 
-- Token Todoist trzymany **tylko lokalnie** — nie commituj go.
-- Todoist REST API v2 zwraca `410 Gone` — używamy unified API v1 (`api.todoist.com/api/v1`).
+## Notes
+
+- The Todoist token is stored locally only. Do not commit it.
+- Todoist REST API v2 returns `410 Gone`; this app uses the unified API v1 (`api.todoist.com/api/v1`).

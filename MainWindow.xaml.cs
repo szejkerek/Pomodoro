@@ -174,7 +174,7 @@ namespace Pomodoro
             int minutes = session.RemainingSeconds / 60;
             int seconds = session.RemainingSeconds % 60;
             TimeText.Text = $"{minutes:00}:{seconds:00}";
-            StartButton.Content = session.IsRunning ? "PAUZA" : "START";
+            StartButton.Content = session.IsRunning ? "PAUSE" : "START";
             Title = $"{TimeText.Text} · Pomodoro";
         }
 
