@@ -14,6 +14,8 @@ namespace Pomodoro.Services
 
         public event Action? Tick;
 
+        public DateTime Now => DateTime.Now;
+
         public void Start()
         {
             timer.Start();

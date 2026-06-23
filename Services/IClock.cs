@@ -7,6 +7,10 @@ namespace Pomodoro.Services
     public interface IClock
     {
         event Action? Tick;
+
+        /// <summary>Wall-clock time, used to stamp finished sessions. Real in prod, settable in tests.</summary>
+        DateTime Now { get; }
+
         void Start();
         void Stop();
     }

@@ -10,6 +10,9 @@ namespace Pomodoro.Tests
 
         public bool IsRunning { get; private set; }
 
+        /// <summary>Wall-clock time the session stamps finished pomodoros with. Fixed unless a test sets it.</summary>
+        public DateTime Now { get; set; } = new DateTime(2026, 6, 23, 12, 0, 0);
+
         public void Start()
         {
             IsRunning = true;
@@ -67,6 +70,22 @@ namespace Pomodoro.Tests
         {
             ClosedTaskIds.Add(taskId);
             return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>Test <see cref="ISessionLog"/>: keeps completed pomodoros in memory, never touches disk.</summary>
+    public sealed class InMemorySessionLog : ISessionLog
+    {
+        private readonly List<CompletedPomodoro> entries = new List<CompletedPomodoro>();
+
+        public void Record(CompletedPomodoro entry)
+        {
+            entries.Add(entry);
+        }
+
+        public IReadOnlyList<CompletedPomodoro> All()
+        {
+            return entries;
         }
     }
 
