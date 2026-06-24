@@ -13,19 +13,28 @@ namespace Pomodoro.Services
         private readonly SettingsService settings;
         private readonly ITaskGateway todoist;
         private readonly ITaskGateway clickUp;
+        private readonly ITaskGateway asana;
 
-        public TaskGatewayRouter(SettingsService settings, ITaskGateway todoist, ITaskGateway clickUp)
+        public TaskGatewayRouter(SettingsService settings, ITaskGateway todoist, ITaskGateway clickUp, ITaskGateway asana)
         {
             this.settings = settings;
             this.todoist = todoist;
             this.clickUp = clickUp;
+            this.asana = asana;
         }
 
-        private ITaskGateway Active => settings.Current.ActiveSource == TaskSource.ClickUp ? clickUp : todoist;
+        private ITaskGateway Active => settings.Current.ActiveSource switch
+        {
+            TaskSource.ClickUp => clickUp,
+            TaskSource.Asana => asana,
+            _ => todoist
+        };
 
         public bool HasToken => Active.HasToken;
 
         public bool SupportsProjects => Active.SupportsProjects;
+
+        public bool SupportsStatusWorkflow => Active.SupportsStatusWorkflow;
 
         public void UseToken(string token) => Active.UseToken(token);
 
@@ -33,6 +42,10 @@ namespace Pomodoro.Services
 
         public Task<IReadOnlyList<TodoistTask>> GetActiveTasksAsync(string filter, string projectId) =>
             Active.GetActiveTasksAsync(filter, projectId);
+
+        public Task<string> ActivateTaskAsync(string taskId) => Active.ActivateTaskAsync(taskId);
+
+        public Task<string> DeactivateTaskAsync(string taskId) => Active.DeactivateTaskAsync(taskId);
 
         public Task CloseTaskAsync(string taskId) => Active.CloseTaskAsync(taskId);
     }

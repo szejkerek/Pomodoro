@@ -12,6 +12,7 @@ namespace Pomodoro.Services
     {
         public const string TokenMissingHint = "Add a Todoist token in settings (⚙) to see your tasks.";
         public const string ClickUpTokenMissingHint = "Add a ClickUp token and List ID in settings (⚙) to see your tasks.";
+        public const string AsanaHint = "Work mode (Asana) — no task integration. Focus sessions count as work.";
         private const string AllProjectsName = "All";
 
         private readonly ITaskGateway gateway;
@@ -34,9 +35,11 @@ namespace Pomodoro.Services
         public bool SupportsProjects => gateway.SupportsProjects;
         public TaskSource ActiveSource => settings.Current.ActiveSource;
         public string SelectedProjectId => settings.Current.SelectedProjectId;
+        public string? FocusedTaskId { get; private set; }
 
         public async Task SyncAsync()
         {
+            FocusedTaskId = null;
             if (gateway.HasToken == false)
             {
                 Projects.Clear();
@@ -86,10 +89,55 @@ namespace Pomodoro.Services
                 task.IsFocused = task == target;
             }
 
+            FocusedTaskId = taskId;
+
             int index = Tasks.IndexOf(target);
             if (index > 0)
             {
                 Tasks.Move(index, 0);
+            }
+        }
+
+        /// <summary>
+        /// Focus a task and, on backends that track it, move it to "in progress" while returning the
+        /// previously-focused task to "to do".
+        /// </summary>
+        public async Task FocusAsync(string taskId)
+        {
+            string? previous = FocusedTaskId;
+            Focus(taskId);
+
+            if (gateway.SupportsStatusWorkflow == false)
+            {
+                return;
+            }
+
+            try
+            {
+                if (previous is not null && previous != taskId)
+                {
+                    ApplyStatus(previous, await gateway.DeactivateTaskAsync(previous));
+                }
+
+                ApplyStatus(taskId, await gateway.ActivateTaskAsync(taskId));
+            }
+            catch (Exception error)
+            {
+                SetHint($"ClickUp error: {error.Message}");
+            }
+        }
+
+        private void ApplyStatus(string taskId, string status)
+        {
+            if (status.Length == 0)
+            {
+                return;
+            }
+
+            TodoistTask? task = Tasks.FirstOrDefault(candidate => candidate.Id == taskId);
+            if (task is not null)
+            {
+                task.Status = status;
             }
         }
 
@@ -158,9 +206,12 @@ namespace Pomodoro.Services
 
         private string TokenHint()
         {
-            return settings.Current.ActiveSource == TaskSource.ClickUp
-                ? ClickUpTokenMissingHint
-                : TokenMissingHint;
+            return settings.Current.ActiveSource switch
+            {
+                TaskSource.ClickUp => ClickUpTokenMissingHint,
+                TaskSource.Asana => AsanaHint,
+                _ => TokenMissingHint
+            };
         }
 
         private void SetHint(string message)

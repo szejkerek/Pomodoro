@@ -22,6 +22,15 @@ namespace Pomodoro.Models
 
         private bool isFocused;
         private bool isCompleting;
+        private string status = string.Empty;
+
+        /// <summary>UI-only: the backend status/column this task sits in (ClickUp), e.g. "in progress". Empty otherwise.</summary>
+        [JsonIgnore]
+        public string Status
+        {
+            get => status;
+            set => SetField(ref status, value, nameof(Status));
+        }
 
         /// <summary>UI-only: the task the user is currently working on (pinned to the top, highlighted).</summary>
         [JsonIgnore]
@@ -41,9 +50,9 @@ namespace Pomodoro.Models
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        private void SetField(ref bool field, bool value, string propertyName)
+        private void SetField<T>(ref T field, T value, string propertyName)
         {
-            if (field == value)
+            if (EqualityComparer<T>.Default.Equals(field, value))
             {
                 return;
             }

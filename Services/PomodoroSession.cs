@@ -126,7 +126,7 @@ namespace Pomodoro.Services
             }
 
             int durationSeconds = settings.PomodoroMinutes * SecondsPerMinute;
-            sessionLog.Record(new CompletedPomodoro(clock.Now, durationSeconds, null));
+            sessionLog.Record(new CompletedPomodoro(clock.Now, durationSeconds, null, settings.ActiveSource));
         }
     }
 }

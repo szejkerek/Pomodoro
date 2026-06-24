@@ -42,12 +42,28 @@ namespace Pomodoro.Tests
         public Dictionary<string, List<TodoistTask>> TasksByKey { get; } = new Dictionary<string, List<TodoistTask>>();
 
         public List<string> ClosedTaskIds { get; } = new List<string>();
+        public List<string> ActivatedTaskIds { get; } = new List<string>();
+        public List<string> DeactivatedTaskIds { get; } = new List<string>();
 
         private string token = string.Empty;
 
         public bool HasToken => token.Length > 0;
 
         public bool SupportsProjects { get; set; } = true;
+
+        public bool SupportsStatusWorkflow { get; set; }
+
+        public Task<string> ActivateTaskAsync(string taskId)
+        {
+            ActivatedTaskIds.Add(taskId);
+            return Task.FromResult("in progress");
+        }
+
+        public Task<string> DeactivateTaskAsync(string taskId)
+        {
+            DeactivatedTaskIds.Add(taskId);
+            return Task.FromResult("to do");
+        }
 
         public void UseToken(string value)
         {

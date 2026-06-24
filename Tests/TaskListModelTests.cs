@@ -119,6 +119,45 @@ namespace Pomodoro.Tests
         }
 
         [Fact]
+        public async Task On_a_status_workflow_backend_focusing_activates_and_deactivates_the_previous()
+        {
+            InMemoryTodoistGateway gateway = new InMemoryTodoistGateway { SupportsStatusWorkflow = true, SupportsProjects = false };
+            gateway.UseToken("t");
+            gateway.TasksByKey[""] = new List<TodoistTask>
+            {
+                new TodoistTask { Id = "1", Content = "a" },
+                new TodoistTask { Id = "2", Content = "b" }
+            };
+
+            TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
+            await model.SyncAsync();
+
+            await model.FocusAsync("1");
+            await model.FocusAsync("2");
+
+            Assert.Equal(new[] { "1", "2" }, gateway.ActivatedTaskIds);
+            Assert.Equal(new[] { "1" }, gateway.DeactivatedTaskIds);
+            Assert.Equal("in progress", model.Tasks.Single(task => task.Id == "2").Status);
+            Assert.Equal("to do", model.Tasks.Single(task => task.Id == "1").Status);
+        }
+
+        [Fact]
+        public async Task Without_a_status_workflow_focusing_does_not_call_the_gateway()
+        {
+            InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
+            gateway.UseToken("t");
+            gateway.TasksByKey[""] = new List<TodoistTask> { new TodoistTask { Id = "1", Content = "a" } };
+
+            TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
+            await model.SyncAsync();
+
+            await model.FocusAsync("1");
+
+            Assert.Empty(gateway.ActivatedTaskIds);
+            Assert.Empty(gateway.DeactivatedTaskIds);
+        }
+
+        [Fact]
         public async Task Closing_a_task_removes_it_and_calls_the_gateway()
         {
             InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();

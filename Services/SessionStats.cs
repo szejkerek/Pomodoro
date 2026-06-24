@@ -7,6 +7,7 @@ namespace Pomodoro.Services
     {
         private const int DaysPerWeek = 7;
         private const int HoursPerDay = 24;
+        private static readonly int SourceCount = Enum.GetValues(typeof(TaskSource)).Length;
 
         /// <summary>
         /// Counts of completed pomodoros per [day-of-week, hour] slot. The first index is
@@ -20,6 +21,29 @@ namespace Pomodoro.Services
                 int day = (int)entry.CompletedAt.DayOfWeek;
                 int hour = entry.CompletedAt.Hour;
                 grid[day, hour]++;
+            }
+
+            return grid;
+        }
+
+        /// <summary>
+        /// Like <see cref="WeeklyHeatmap"/> but split by source: the third index is the
+        /// <see cref="TaskSource"/> as an int, so the UI can colour each slot by context.
+        /// </summary>
+        public static int[,,] WeeklySourceHeatmap(IReadOnlyList<CompletedPomodoro> entries)
+        {
+            int[,,] grid = new int[DaysPerWeek, HoursPerDay, SourceCount];
+            foreach (CompletedPomodoro entry in entries)
+            {
+                int source = (int)entry.Source;
+                if (source < 0 || source >= SourceCount)
+                {
+                    continue;
+                }
+
+                int day = (int)entry.CompletedAt.DayOfWeek;
+                int hour = entry.CompletedAt.Hour;
+                grid[day, hour, source]++;
             }
 
             return grid;

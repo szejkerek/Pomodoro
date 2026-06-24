@@ -22,16 +22,27 @@ namespace Pomodoro.Services
         private const int MaxAttempts = 4;
         private const int RetryBackoffMs = 400;
 
+        // Status types ClickUp tags each status with, and the name fragments used to pick the
+        // three workflow columns we drive. A list's status names are custom, so we match by
+        // intent (name fragment first, then type) and fall back to a sensible literal.
         private const string ClosedStatusType = "closed";
         private const string DoneStatusType = "done";
-        private const string FallbackClosedStatus = "complete";
+        private const string CustomStatusType = "custom";
+        private const string UnstartedStatusType = "unstarted";
+        private const string ReviewNameFragment = "review";
+        private const string InProgressNameFragment = "progress";
+        private const string ToDoNameFragment = "to do";
+        private const string ToDoNameFragmentAlt = "todo";
+        private const string FallbackToDoStatus = "to do";
+        private const string FallbackInProgressStatus = "in progress";
+        private const string FallbackReviewStatus = "review";
 
         private readonly HttpClient httpClient = new HttpClient();
         private string apiToken = string.Empty;
         private string listId = string.Empty;
 
-        // The status name a task must take to count as done is list-specific; resolved once and cached.
-        private string? closedStatusName;
+        // The list's workflow column names are custom; resolved from the list once and cached.
+        private WorkflowStatuses? workflow;
 
         // Tasks are scoped to the token owner, so the list only shows what's assigned to me.
         // Resolved from the token once and cached.
@@ -40,6 +51,8 @@ namespace Pomodoro.Services
         public bool HasToken => apiToken.Length > 0 && listId.Length > 0;
 
         public bool SupportsProjects => false;
+
+        public bool SupportsStatusWorkflow => true;
 
         public void UseToken(string token)
         {
@@ -57,7 +70,7 @@ namespace Pomodoro.Services
             string trimmed = listIdValue.Trim();
             if (trimmed != listId)
             {
-                closedStatusName = null;
+                workflow = null;
             }
 
             listId = trimmed;
@@ -70,6 +83,7 @@ namespace Pomodoro.Services
 
         public async Task<IReadOnlyList<TodoistTask>> GetActiveTasksAsync(string filter, string projectId)
         {
+            WorkflowStatuses statuses = await ResolveWorkflowAsync();
             long userId = await ResolveCurrentUserIdAsync();
             List<TodoistTask> collected = new List<TodoistTask>();
 
@@ -80,7 +94,14 @@ namespace Pomodoro.Services
 
                 foreach (ClickUpTask task in fetched.Tasks)
                 {
-                    collected.Add(new TodoistTask { Id = task.Id, Content = task.Name });
+                    string statusName = task.Status?.Status ?? string.Empty;
+                    string statusType = task.Status?.Type ?? string.Empty;
+                    if (IsHidden(statusName, statusType, statuses))
+                    {
+                        continue;
+                    }
+
+                    collected.Add(new TodoistTask { Id = task.Id, Content = task.Name, Status = statusName });
                 }
 
                 if (fetched.IsLastPage || fetched.Tasks.Count == 0)
@@ -92,15 +113,46 @@ namespace Pomodoro.Services
             return collected;
         }
 
+        public async Task<string> ActivateTaskAsync(string taskId)
+        {
+            WorkflowStatuses statuses = await ResolveWorkflowAsync();
+            await PutStatusAsync(taskId, statuses.InProgress);
+            return statuses.InProgress;
+        }
+
+        public async Task<string> DeactivateTaskAsync(string taskId)
+        {
+            WorkflowStatuses statuses = await ResolveWorkflowAsync();
+            await PutStatusAsync(taskId, statuses.ToDo);
+            return statuses.ToDo;
+        }
+
+        // "Completing" a task here means sending it to review, not closing it — review tasks
+        // are hidden on the next load, same as done ones.
         public async Task CloseTaskAsync(string taskId)
         {
-            string status = await ResolveClosedStatusNameAsync();
+            WorkflowStatuses statuses = await ResolveWorkflowAsync();
+            await PutStatusAsync(taskId, statuses.Review);
+        }
+
+        private async Task PutStatusAsync(string taskId, string status)
+        {
             string requestUrl = $"{ApiBase}/task/{taskId}";
             string body = JsonSerializer.Serialize(new ClickUpStatusUpdate { Status = status });
 
             using HttpResponseMessage response =
                 await SendWithRetryAsync(() => BuildJsonRequest(HttpMethod.Put, requestUrl, body));
             response.EnsureSuccessStatusCode();
+        }
+
+        private static bool IsHidden(string statusName, string statusType, WorkflowStatuses statuses)
+        {
+            if (statusType == ClosedStatusType || statusType == DoneStatusType)
+            {
+                return true;
+            }
+
+            return string.Equals(statusName, statuses.Review, StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task<long> ResolveCurrentUserIdAsync()
@@ -115,19 +167,44 @@ namespace Pomodoro.Services
             return currentUserId.Value;
         }
 
-        private async Task<string> ResolveClosedStatusNameAsync()
+        private async Task<WorkflowStatuses> ResolveWorkflowAsync()
         {
-            if (closedStatusName is not null)
+            if (workflow is not null)
             {
-                return closedStatusName;
+                return workflow;
             }
 
             ClickUpList list = await GetJsonAsync<ClickUpList>($"{ApiBase}/list/{listId}");
-            ClickUpStatus? closed = list.Statuses.FirstOrDefault(status => status.Type == ClosedStatusType)
-                ?? list.Statuses.FirstOrDefault(status => status.Type == DoneStatusType);
+            List<ClickUpStatus> statuses = list.Statuses;
 
-            closedStatusName = closed?.Status ?? FallbackClosedStatus;
-            return closedStatusName;
+            string toDo = NameContaining(statuses, ToDoNameFragment)
+                ?? NameContaining(statuses, ToDoNameFragmentAlt)
+                ?? OfType(statuses, UnstartedStatusType)
+                ?? statuses.FirstOrDefault()?.Status
+                ?? FallbackToDoStatus;
+
+            string inProgress = NameContaining(statuses, InProgressNameFragment)
+                ?? OfType(statuses, CustomStatusType)
+                ?? FallbackInProgressStatus;
+
+            string review = NameContaining(statuses, ReviewNameFragment)
+                ?? OfType(statuses, ClosedStatusType)
+                ?? OfType(statuses, DoneStatusType)
+                ?? FallbackReviewStatus;
+
+            workflow = new WorkflowStatuses(toDo, inProgress, review);
+            return workflow;
+        }
+
+        private static string? NameContaining(List<ClickUpStatus> statuses, string fragment)
+        {
+            return statuses
+                .FirstOrDefault(status => status.Status.Contains(fragment, StringComparison.OrdinalIgnoreCase))?.Status;
+        }
+
+        private static string? OfType(List<ClickUpStatus> statuses, string type)
+        {
+            return statuses.FirstOrDefault(status => status.Type == type)?.Status;
         }
 
         private async Task<T> GetJsonAsync<T>(string requestUrl) where T : new()
@@ -208,7 +285,13 @@ namespace Pomodoro.Services
 
         [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("status")]
+        public ClickUpStatus? Status { get; set; }
     }
+
+    /// <summary>The three list columns the widget drives, resolved to this list's custom names.</summary>
+    internal sealed record WorkflowStatuses(string ToDo, string InProgress, string Review);
 
     internal sealed class ClickUpList
     {

@@ -32,6 +32,7 @@ namespace Pomodoro
         private readonly AutoStartManager autoStartManager = new AutoStartManager();
         private readonly HttpTodoistGateway todoistGateway = new HttpTodoistGateway();
         private readonly HttpClickUpGateway clickUpGateway = new HttpClickUpGateway();
+        private readonly ITaskGateway asanaGateway = new NullTaskGateway();
         private readonly ITaskGateway gateway;
         private readonly ISessionLog sessionLog = new JsonSessionLog();
         private readonly TaskListModel taskList;
@@ -46,7 +47,7 @@ namespace Pomodoro
         {
             InitializeComponent();
 
-            gateway = new TaskGatewayRouter(settings, todoistGateway, clickUpGateway);
+            gateway = new TaskGatewayRouter(settings, todoistGateway, clickUpGateway, asanaGateway);
             taskList = new TaskListModel(gateway, settings);
             session = new PomodoroSession(settings.Current, new DispatcherClock(), sessionLog);
 
@@ -153,6 +154,13 @@ namespace Pomodoro
             UpdateSourceUi();
         }
 
+        private async void OnSourceAsanaClick(object sender, RoutedEventArgs eventArgs)
+        {
+            await taskList.SwitchSourceAsync(TaskSource.Asana);
+            RestoreProjectSelection();
+            UpdateSourceUi();
+        }
+
         // ---- Todoist (delegate to the task list model) ----
 
         private async void OnSyncClick(object sender, RoutedEventArgs eventArgs)
@@ -172,6 +180,7 @@ namespace Pomodoro
         {
             StyleTab(SourceTodoist, taskList.ActiveSource == TaskSource.Todoist);
             StyleTab(SourceClickUp, taskList.ActiveSource == TaskSource.ClickUp);
+            StyleTab(SourceAsana, taskList.ActiveSource == TaskSource.Asana);
             ProjectSelector.Visibility = taskList.SupportsProjects ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -197,7 +206,7 @@ namespace Pomodoro
             await taskList.SelectProjectAsync(ProjectSelector.SelectedValue as string ?? string.Empty);
         }
 
-        private void OnTaskRowClick(object sender, MouseButtonEventArgs eventArgs)
+        private async void OnTaskRowClick(object sender, MouseButtonEventArgs eventArgs)
         {
             // Handle it here so the click doesn't bubble up to the window's DragMove.
             eventArgs.Handled = true;
@@ -205,7 +214,7 @@ namespace Pomodoro
             {
                 // Focusing a task is also the quick way out of an accidental completion.
                 CancelPendingCompletion(taskId);
-                taskList.Focus(taskId);
+                await taskList.FocusAsync(taskId);
             }
         }
 

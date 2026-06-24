@@ -17,9 +17,24 @@ namespace Pomodoro.Services
         /// </summary>
         bool SupportsProjects { get; }
 
+        /// <summary>
+        /// True when the backend moves a task through statuses as you work it (ClickUp):
+        /// activating it sets "in progress", deactivating returns it to "to do", and completing
+        /// sends it to "review" instead of closing. False backends ignore the activate/deactivate
+        /// calls and treat completion as a plain close.
+        /// </summary>
+        bool SupportsStatusWorkflow { get; }
+
         void UseToken(string token);
         Task<IReadOnlyList<TodoistProject>> GetProjectsAsync();
         Task<IReadOnlyList<TodoistTask>> GetActiveTasksAsync(string filter, string projectId);
+
+        /// <summary>Mark a task as the one being worked on. Returns the status label now shown, or "".</summary>
+        Task<string> ActivateTaskAsync(string taskId);
+
+        /// <summary>Return a task to the not-started column. Returns the status label now shown, or "".</summary>
+        Task<string> DeactivateTaskAsync(string taskId);
+
         Task CloseTaskAsync(string taskId);
     }
 }

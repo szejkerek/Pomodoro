@@ -25,6 +25,18 @@ namespace Pomodoro.Services
 
         public bool SupportsProjects => true;
 
+        public bool SupportsStatusWorkflow => false;
+
+        public Task<string> ActivateTaskAsync(string taskId)
+        {
+            return Task.FromResult(string.Empty);
+        }
+
+        public Task<string> DeactivateTaskAsync(string taskId)
+        {
+            return Task.FromResult(string.Empty);
+        }
+
         public void UseToken(string token)
         {
             apiToken = token.Trim();
