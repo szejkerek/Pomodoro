@@ -6,19 +6,17 @@
 
 [![Download](https://img.shields.io/badge/Download%20for%20Windows-BA4949?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/szejkerek/Pomodoro/releases/latest)
 
-<img src="docs/screenshot.png" alt="Pomodoro widget" width="320">
+<img src="screenshot.png" alt="Pomodoro widget" width="320">
 
 </div>
 
 ---
 
-## Why you'll like it
-
-- ⏱️ **Focus mode** — the widget goes dark and strips to just the timer while you work.
-- 🪟 **Always on top, no clutter** — borderless, frameless, drag it anywhere. It never gets in the way.
-- ✅ **Your tasks, right there** — pull in tasks from **Todoist** or **ClickUp**, see due dates and status at a glance, and tick them off as you go.
-- 🔥 **Streaks & heatmap** — a focus stat view that shows when you actually get things done.
-- 🔔 **Set it and forget it** — auto-start breaks, end-of-session chime, and launch at login.
+ **Focus mode** — the widget goes dark and strips to just the timer while you work.
+ **Always on top, no clutter** — borderless, frameless, drag it anywhere. It never gets in the way.
+ **Your tasks, right there** — pull in tasks from **Todoist** or **ClickUp**, see due dates and status at a glance, and tick them off as you go.
+ **Streaks & heatmap** — a focus stat view that shows when you actually get things done.
+ **Set it and forget it** — auto-start breaks, end-of-session chime, and launch at login.
 
 ## Get started
 
