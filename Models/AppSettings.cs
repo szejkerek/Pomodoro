@@ -21,15 +21,18 @@ namespace Pomodoro.Models
         public string ClickUpToken { get; set; } = string.Empty;
         public string ClickUpListId { get; set; } = string.Empty;
 
-        public bool BlockDistractionsEnabled { get; set; } = false;
+        public bool BlockDistractionsEnabled { get; set; } = true;
         public string BlockedHosts { get; set; } = DefaultBlockedHosts;
-        public string BlockedProcesses { get; set; } = "Spotify";
+        public string BlockedProcesses { get; set; } = DefaultBlockedProcesses;
 
         public double? WindowLeft { get; set; }
         public double? WindowTop { get; set; }
 
         private const string DefaultBlockedHosts =
             "youtube.com\nfacebook.com\nlinkedin.com\nmail.google.com\noutlook.live.com\noutlook.office.com";
+
+        private const string DefaultBlockedProcesses =
+            "Spotify\nsteam\nDiscord";
 
         /// <summary>The blocked domains, one per line, trimmed and without blanks.</summary>
         public IReadOnlyList<string> BlockedHostList()
