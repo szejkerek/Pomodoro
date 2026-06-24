@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🍅 Pomodoro
+# 🍅 Tiny Pomodoro
 
 **Stay focused. A tiny always-on-top timer that lives in the corner of your screen.**
 
@@ -12,11 +12,9 @@
 
 ---
 
- **Focus mode** — the widget goes dark and strips to just the timer while you work.
- **Always on top, no clutter** — borderless, frameless, drag it anywhere. It never gets in the way.
- **Your tasks, right there** — pull in tasks from **Todoist** or **ClickUp**, see due dates and status at a glance, and tick them off as you go.
+ **Always on top** — borderless, frameless, drag it anywhere. It never gets in the way.
+ **Your tasks, right there** — pull in tasks from **Todoist** or **ClickUp**, see due dates and status. Tick them off as you go.
  **Streaks & heatmap** — a focus stat view that shows when you actually get things done.
- **Set it and forget it** — auto-start breaks, end-of-session chime, and launch at login.
 
 ## Get started
 
@@ -40,6 +38,6 @@ dotnet run -c Release
 dotnet test Tests\Pomodoro.Tests.csproj
 ```
 
-The app is WPF on .NET 10 with a pure, unit-tested core behind platform adapters. See `CLAUDE.md` for the architecture.
+The app is WPF on .NET 10 with a pure, unit-tested core behind platform adapters.
 
 </details>
