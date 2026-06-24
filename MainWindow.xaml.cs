@@ -61,6 +61,8 @@ namespace Pomodoro
         private readonly UpdateChecker updateChecker = new UpdateChecker(new HttpClient());
         private readonly TaskListModel taskList;
         private readonly PomodoroSession session;
+        private readonly IFocusBlocker focusBlocker;
+        private readonly FocusGuard focusGuard;
 
         // The undo window for task completion; runs on its own clock so a paused timer doesn't stall it.
         private readonly PendingCompletions pendingCompletions =
@@ -85,7 +87,13 @@ namespace Pomodoro
             taskList = new TaskListModel(gateway, settings);
             session = new PomodoroSession(settings.Current, new DispatcherClock(), sessionLog);
 
+            focusBlocker = new CompositeFocusBlocker(
+                new HostsFileBlocker(() => settings.Current.BlockedHostList()),
+                new ProcessBlocker(new DispatcherClock(), new ProcessKiller(), () => settings.Current.BlockedProcessList()));
+            focusGuard = new FocusGuard(focusBlocker, () => settings.Current.BlockDistractionsEnabled);
+
             session.Changed += Render;
+            session.Changed += UpdateFocusBlock;
             session.Finished += OnSessionFinished;
             taskList.HintChanged += () => ShowHint(taskList.Hint);
             pendingCompletions.Elapsed += taskId => _ = CompletePendingTaskAsync(taskId);
@@ -96,6 +104,9 @@ namespace Pomodoro
             ApplyWindowPosition();
             autoStartManager.Apply(settings.Current.StartWithWindows);
             ConfigureGateways();
+
+            // Clear any block left in the hosts file by a previous crash before the first focus run.
+            focusBlocker.Unblock();
 
             Render();
             RenderStreak();
@@ -391,6 +402,12 @@ namespace Pomodoro
             Title = $"{TimeText.Text} · Pomodoro";
         }
 
+        private void UpdateFocusBlock()
+        {
+            bool isFocusRunning = session.IsRunning && session.CurrentMode == TimerMode.Pomodoro;
+            focusGuard.Update(isFocusRunning);
+        }
+
         private void ApplyFocusMode(bool isFocusMode)
         {
             // The mode tabs and chrome go away (switching is blocked while running anyway),
@@ -438,6 +455,9 @@ namespace Pomodoro
             {
                 UnregisterHotKey(windowHandle, HotkeyId);
             }
+
+            // Never leave the user blocked after the widget closes.
+            focusBlocker.Unblock();
 
             settings.Update(current =>
             {

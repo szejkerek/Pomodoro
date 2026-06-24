@@ -32,6 +32,10 @@ namespace Pomodoro
 
             ClickUpTokenBox.Password = settings.ClickUpToken;
             ClickUpListBox.Text = settings.ClickUpListId;
+
+            BlockDistractionsBox.IsChecked = settings.BlockDistractionsEnabled;
+            BlockedHostsBox.Text = settings.BlockedHosts;
+            BlockedProcessesBox.Text = settings.BlockedProcesses;
         }
 
         private void OnSaveClick(object sender, RoutedEventArgs eventArgs)
@@ -51,6 +55,10 @@ namespace Pomodoro
 
             settings.ClickUpToken = ClickUpTokenBox.Password.Trim();
             settings.ClickUpListId = ClickUpListBox.Text.Trim();
+
+            settings.BlockDistractionsEnabled = BlockDistractionsBox.IsChecked == true;
+            settings.BlockedHosts = BlockedHostsBox.Text.Trim();
+            settings.BlockedProcesses = BlockedProcessesBox.Text.Trim();
 
             DialogResult = true;
         }

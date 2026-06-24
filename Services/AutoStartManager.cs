@@ -3,37 +3,68 @@ using Microsoft.Win32;
 
 namespace Pomodoro.Services
 {
-    /// <summary>Toggles "launch at Windows login" via the per-user Run registry key.</summary>
+    /// <summary>
+    /// Toggles "launch at Windows login". Because the app runs elevated (for the hosts-file block),
+    /// the per-user <c>Run</c> key can't start it — Windows refuses to auto-launch elevated apps that way.
+    /// So we register a Task Scheduler logon task at the highest run level instead, via <c>schtasks.exe</c>
+    /// (no extra dependencies), and clean up any leftover legacy <c>Run</c> value.
+    /// </summary>
     public sealed class AutoStartManager
     {
-        private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        private const string ValueName = "Pomodoro";
+        private const string TaskName = "Pomodoro";
+        private const string LegacyRunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        private const string LegacyValueName = "Pomodoro";
 
         public bool IsEnabled()
         {
-            using RegistryKey? runKey = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: false);
-            if (runKey is null)
-            {
-                return false;
-            }
-
-            object? storedValue = runKey.GetValue(ValueName);
-            return storedValue is not null;
+            return RunSchTasks($"/Query /TN {TaskName}") == 0;
         }
 
         public void Apply(bool shouldEnable)
         {
-            using RegistryKey runKey = Registry.CurrentUser.CreateSubKey(RunKeyPath);
+            RemoveLegacyRunEntry();
 
             if (shouldEnable)
             {
-                runKey.SetValue(ValueName, $"\"{GetExecutablePath()}\"");
+                string executablePath = GetExecutablePath();
+                RunSchTasks($"/Create /TN {TaskName} /SC ONLOGON /RL HIGHEST /TR \"\\\"{executablePath}\\\"\" /F");
                 return;
             }
 
-            if (runKey.GetValue(ValueName) is not null)
+            RunSchTasks($"/Delete /TN {TaskName} /F");
+        }
+
+        private static int RunSchTasks(string arguments)
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo("schtasks.exe", arguments)
             {
-                runKey.DeleteValue(ValueName);
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            using Process? process = Process.Start(startInfo);
+            if (process is null)
+            {
+                return -1;
+            }
+
+            process.WaitForExit();
+            return process.ExitCode;
+        }
+
+        private static void RemoveLegacyRunEntry()
+        {
+            using RegistryKey? runKey = Registry.CurrentUser.OpenSubKey(LegacyRunKeyPath, writable: true);
+            if (runKey is null)
+            {
+                return;
+            }
+
+            if (runKey.GetValue(LegacyValueName) is not null)
+            {
+                runKey.DeleteValue(LegacyValueName);
             }
         }
 

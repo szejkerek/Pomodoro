@@ -9,6 +9,7 @@
     <AssemblyName>Pomodoro</AssemblyName>
     <RootNamespace>Pomodoro</RootNamespace>
     <ApplicationIcon></ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>1.0.0</Version>
   </PropertyGroup>
 
