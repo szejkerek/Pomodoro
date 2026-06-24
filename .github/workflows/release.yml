@@ -1,0 +1,41 @@
+name: Release
+
+# Tag a version to ship a downloadable Windows build:
+#   git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test
+        run: dotnet test Tests/Pomodoro.Tests.csproj -c Release
+
+      # Self-contained single file: users run it with no .NET install required.
+      - name: Publish
+        run: >
+          dotnet publish -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Pomodoro ${{ github.ref_name }}
+          files: publish/Pomodoro.exe
+          generate_release_notes: true
