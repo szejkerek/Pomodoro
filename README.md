@@ -13,8 +13,11 @@
 ---
 
  **Distraction blocker** — while a pomodoro runs, block time-sink sites (YouTube, Facebook, LinkedIn, webmail) and kill distracting apps (Spotify). Everything comes back the moment you pause or hit a break.
+ 
  **Always on top** — borderless, frameless, drag it anywhere. It never gets in the way.
+ 
  **Your tasks, right there** — pull in tasks from **Todoist** or **ClickUp**, see due dates and status. Tick them off as you go.
+ 
  **Streaks & heatmap** — a focus stat view that shows when you actually get things done.
 
 ## Get started
