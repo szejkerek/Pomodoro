@@ -11,10 +11,6 @@ namespace Pomodoro.Services
     {
         public bool HasToken => false;
 
-        public bool SupportsProjects => false;
-
-        public bool SupportsStatusWorkflow => false;
-
         public void Configure(AppSettings settings)
         {
         }
@@ -34,9 +30,9 @@ namespace Pomodoro.Services
             return Task.FromResult<IReadOnlyList<TodoistProject>>(Array.Empty<TodoistProject>());
         }
 
-        public Task<IReadOnlyList<TodoistTask>> GetActiveTasksAsync(string filter, string projectId)
+        public Task<IReadOnlyList<TaskItem>> GetActiveTasksAsync(string filter, string projectId)
         {
-            return Task.FromResult<IReadOnlyList<TodoistTask>>(Array.Empty<TodoistTask>());
+            return Task.FromResult<IReadOnlyList<TaskItem>>(Array.Empty<TaskItem>());
         }
 
         public Task CloseTaskAsync(string taskId)

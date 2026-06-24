@@ -9,7 +9,7 @@ namespace Pomodoro.Services
     /// So we register a Task Scheduler logon task at the highest run level instead, via <c>schtasks.exe</c>
     /// (no extra dependencies), and clean up any leftover legacy <c>Run</c> value.
     /// </summary>
-    public sealed class AutoStartManager
+    public sealed class AutoStartManager : IAutoStart
     {
         private const string TaskName = "Pomodoro";
         private const string LegacyRunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";

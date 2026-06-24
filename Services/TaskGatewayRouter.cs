@@ -32,10 +32,6 @@ namespace Pomodoro.Services
 
         public bool HasToken => Active.HasToken;
 
-        public bool SupportsProjects => Active.SupportsProjects;
-
-        public bool SupportsStatusWorkflow => Active.SupportsStatusWorkflow;
-
         // Configure every backend, not just the active one, so flipping the source later needs no re-wire.
         public void Configure(AppSettings appSettings)
         {
@@ -46,7 +42,7 @@ namespace Pomodoro.Services
 
         public Task<IReadOnlyList<TodoistProject>> GetProjectsAsync() => Active.GetProjectsAsync();
 
-        public Task<IReadOnlyList<TodoistTask>> GetActiveTasksAsync(string filter, string projectId) =>
+        public Task<IReadOnlyList<TaskItem>> GetActiveTasksAsync(string filter, string projectId) =>
             Active.GetActiveTasksAsync(filter, projectId);
 
         public Task<string> ActivateTaskAsync(string taskId) => Active.ActivateTaskAsync(taskId);

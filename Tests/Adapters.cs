@@ -39,7 +39,7 @@ namespace Pomodoro.Tests
         public List<TodoistProject> ProjectsToReturn { get; } = new List<TodoistProject>();
 
         // Key: project id when filtering by project, otherwise the filter string ("" = all).
-        public Dictionary<string, List<TodoistTask>> TasksByKey { get; } = new Dictionary<string, List<TodoistTask>>();
+        public Dictionary<string, List<TaskItem>> TasksByKey { get; } = new Dictionary<string, List<TaskItem>>();
 
         public List<string> ClosedTaskIds { get; } = new List<string>();
         public List<string> ActivatedTaskIds { get; } = new List<string>();
@@ -48,10 +48,6 @@ namespace Pomodoro.Tests
         private string token = string.Empty;
 
         public bool HasToken => token.Length > 0;
-
-        public bool SupportsProjects { get; set; } = true;
-
-        public bool SupportsStatusWorkflow { get; set; }
 
         public Task<string> ActivateTaskAsync(string taskId)
         {
@@ -80,13 +76,13 @@ namespace Pomodoro.Tests
             return Task.FromResult<IReadOnlyList<TodoistProject>>(ProjectsToReturn);
         }
 
-        public Task<IReadOnlyList<TodoistTask>> GetActiveTasksAsync(string filter, string projectId)
+        public Task<IReadOnlyList<TaskItem>> GetActiveTasksAsync(string filter, string projectId)
         {
             string key = projectId.Length > 0 ? projectId : filter;
-            List<TodoistTask> tasks = TasksByKey.TryGetValue(key, out List<TodoistTask>? found)
+            List<TaskItem> tasks = TasksByKey.TryGetValue(key, out List<TaskItem>? found)
                 ? found
-                : new List<TodoistTask>();
-            return Task.FromResult<IReadOnlyList<TodoistTask>>(tasks);
+                : new List<TaskItem>();
+            return Task.FromResult<IReadOnlyList<TaskItem>>(tasks);
         }
 
         public Task CloseTaskAsync(string taskId)

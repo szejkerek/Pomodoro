@@ -29,7 +29,7 @@ namespace Pomodoro.Tests
             InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
             gateway.UseToken("t");
             gateway.ProjectsToReturn.Add(new TodoistProject { Id = "P1", Name = "Portfolio" });
-            gateway.TasksByKey[""] = new List<TodoistTask> { new TodoistTask { Id = "1", Content = "a" } };
+            gateway.TasksByKey[""] = new List<TaskItem> { new TaskItem { Id = "1", Label = "a" } };
 
             TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
 
@@ -41,13 +41,39 @@ namespace Pomodoro.Tests
         }
 
         [Fact]
+        public async Task A_backend_with_no_projects_reports_none()
+        {
+            InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
+            gateway.UseToken("t");
+            gateway.TasksByKey[""] = new List<TaskItem> { new TaskItem { Id = "1", Label = "a" } };
+            TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
+
+            await model.SyncAsync();
+
+            Assert.False(model.HasProjects);
+        }
+
+        [Fact]
+        public async Task A_backend_with_projects_reports_them()
+        {
+            InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
+            gateway.UseToken("t");
+            gateway.ProjectsToReturn.Add(new TodoistProject { Id = "P1", Name = "Portfolio" });
+            TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
+
+            await model.SyncAsync();
+
+            Assert.True(model.HasProjects);
+        }
+
+        [Fact]
         public async Task Selected_project_beats_the_filter()
         {
             InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
             gateway.UseToken("t");
             gateway.ProjectsToReturn.Add(new TodoistProject { Id = "P1", Name = "Portfolio" });
-            gateway.TasksByKey["P1"] = new List<TodoistTask> { new TodoistTask { Id = "byProject", Content = "p" } };
-            gateway.TasksByKey["today"] = new List<TodoistTask> { new TodoistTask { Id = "byFilter", Content = "f" } };
+            gateway.TasksByKey["P1"] = new List<TaskItem> { new TaskItem { Id = "byProject", Label = "p" } };
+            gateway.TasksByKey["today"] = new List<TaskItem> { new TaskItem { Id = "byFilter", Label = "f" } };
 
             AppSettings settings = new AppSettings { SelectedProjectId = "P1", TodoistFilter = "today" };
             TaskListModel model = new TaskListModel(gateway, SettingsWith(settings));
@@ -64,7 +90,7 @@ namespace Pomodoro.Tests
             InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
             gateway.UseToken("t");
             gateway.ProjectsToReturn.Add(new TodoistProject { Id = "P1", Name = "Portfolio" });
-            gateway.TasksByKey[""] = new List<TodoistTask>();
+            gateway.TasksByKey[""] = new List<TaskItem>();
 
             AppSettings settings = new AppSettings { SelectedProjectId = "ghost" };
             TaskListModel model = new TaskListModel(gateway, SettingsWith(settings));
@@ -79,11 +105,11 @@ namespace Pomodoro.Tests
         {
             InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
             gateway.UseToken("t");
-            gateway.TasksByKey[""] = new List<TodoistTask>
+            gateway.TasksByKey[""] = new List<TaskItem>
             {
-                new TodoistTask { Id = "1", Content = "a" },
-                new TodoistTask { Id = "2", Content = "b" },
-                new TodoistTask { Id = "3", Content = "c" }
+                new TaskItem { Id = "1", Label = "a" },
+                new TaskItem { Id = "2", Label = "b" },
+                new TaskItem { Id = "3", Label = "c" }
             };
 
             TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
@@ -101,10 +127,10 @@ namespace Pomodoro.Tests
         {
             InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
             gateway.UseToken("t");
-            gateway.TasksByKey[""] = new List<TodoistTask>
+            gateway.TasksByKey[""] = new List<TaskItem>
             {
-                new TodoistTask { Id = "1", Content = "a" },
-                new TodoistTask { Id = "2", Content = "b" }
+                new TaskItem { Id = "1", Label = "a" },
+                new TaskItem { Id = "2", Label = "b" }
             };
 
             TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
@@ -119,14 +145,14 @@ namespace Pomodoro.Tests
         }
 
         [Fact]
-        public async Task On_a_status_workflow_backend_focusing_activates_and_deactivates_the_previous()
+        public async Task Focusing_activates_the_task_and_deactivates_the_previous()
         {
-            InMemoryTodoistGateway gateway = new InMemoryTodoistGateway { SupportsStatusWorkflow = true, SupportsProjects = false };
+            InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
             gateway.UseToken("t");
-            gateway.TasksByKey[""] = new List<TodoistTask>
+            gateway.TasksByKey[""] = new List<TaskItem>
             {
-                new TodoistTask { Id = "1", Content = "a" },
-                new TodoistTask { Id = "2", Content = "b" }
+                new TaskItem { Id = "1", Label = "a" },
+                new TaskItem { Id = "2", Label = "b" }
             };
 
             TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
@@ -142,31 +168,15 @@ namespace Pomodoro.Tests
         }
 
         [Fact]
-        public async Task Without_a_status_workflow_focusing_does_not_call_the_gateway()
-        {
-            InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
-            gateway.UseToken("t");
-            gateway.TasksByKey[""] = new List<TodoistTask> { new TodoistTask { Id = "1", Content = "a" } };
-
-            TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));
-            await model.SyncAsync();
-
-            await model.FocusAsync("1");
-
-            Assert.Empty(gateway.ActivatedTaskIds);
-            Assert.Empty(gateway.DeactivatedTaskIds);
-        }
-
-        [Fact]
         public async Task Closing_a_task_removes_it_and_calls_the_gateway()
         {
             InMemoryTodoistGateway gateway = new InMemoryTodoistGateway();
             gateway.UseToken("t");
             gateway.ProjectsToReturn.Add(new TodoistProject { Id = "P1", Name = "Portfolio" });
-            gateway.TasksByKey[""] = new List<TodoistTask>
+            gateway.TasksByKey[""] = new List<TaskItem>
             {
-                new TodoistTask { Id = "keep", Content = "k" },
-                new TodoistTask { Id = "done", Content = "d" }
+                new TaskItem { Id = "keep", Label = "k" },
+                new TaskItem { Id = "done", Label = "d" }
             };
 
             TaskListModel model = new TaskListModel(gateway, SettingsWith(new AppSettings()));

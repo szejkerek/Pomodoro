@@ -21,21 +21,6 @@ namespace Pomodoro.Services
         private const int MaxAttempts = 4;
         private const int RetryBackoffMs = 400;
 
-        // Status types ClickUp tags each status with, and the name fragments used to pick the
-        // three workflow columns we drive. A list's status names are custom, so we match by
-        // intent (name fragment first, then type) and fall back to a sensible literal.
-        private const string ClosedStatusType = "closed";
-        private const string DoneStatusType = "done";
-        private const string CustomStatusType = "custom";
-        private const string UnstartedStatusType = "unstarted";
-        private const string ReviewNameFragment = "review";
-        private const string InProgressNameFragment = "progress";
-        private const string ToDoNameFragment = "to do";
-        private const string ToDoNameFragmentAlt = "todo";
-        private const string FallbackToDoStatus = "to do";
-        private const string FallbackInProgressStatus = "in progress";
-        private const string FallbackReviewStatus = "review";
-
         private readonly HttpJsonTransport transport = new HttpJsonTransport(new HttpClient(), MaxAttempts, RetryBackoffMs);
         private string apiToken = string.Empty;
         private string listId = string.Empty;
@@ -48,10 +33,6 @@ namespace Pomodoro.Services
         private long? currentUserId;
 
         public bool HasToken => apiToken.Length > 0 && listId.Length > 0;
-
-        public bool SupportsProjects => false;
-
-        public bool SupportsStatusWorkflow => true;
 
         public void Configure(AppSettings settings)
         {
@@ -77,11 +58,11 @@ namespace Pomodoro.Services
             return Task.FromResult<IReadOnlyList<TodoistProject>>(Array.Empty<TodoistProject>());
         }
 
-        public async Task<IReadOnlyList<TodoistTask>> GetActiveTasksAsync(string filter, string projectId)
+        public async Task<IReadOnlyList<TaskItem>> GetActiveTasksAsync(string filter, string projectId)
         {
             WorkflowStatuses statuses = await ResolveWorkflowAsync();
             long userId = await ResolveCurrentUserIdAsync();
-            List<TodoistTask> collected = new List<TodoistTask>();
+            List<TaskItem> collected = new List<TaskItem>();
 
             for (int page = 0; page < MaxPages; page++)
             {
@@ -92,15 +73,15 @@ namespace Pomodoro.Services
                 {
                     string statusName = task.Status?.Status ?? string.Empty;
                     string statusType = task.Status?.Type ?? string.Empty;
-                    if (IsHidden(statusName, statusType, statuses))
+                    if (ClickUpWorkflow.IsHidden(statusName, statusType, statuses))
                     {
                         continue;
                     }
 
-                    collected.Add(new TodoistTask
+                    collected.Add(new TaskItem
                     {
                         Id = task.Id,
-                        Content = task.Name,
+                        Label = task.Name,
                         Status = statusName,
                         DueDate = DueDateLabel.FromClickUpMillis(task.DueDate)
                     });
@@ -147,16 +128,6 @@ namespace Pomodoro.Services
             response.EnsureSuccessStatusCode();
         }
 
-        private static bool IsHidden(string statusName, string statusType, WorkflowStatuses statuses)
-        {
-            if (statusType == ClosedStatusType || statusType == DoneStatusType)
-            {
-                return true;
-            }
-
-            return string.Equals(statusName, statuses.Review, StringComparison.OrdinalIgnoreCase);
-        }
-
         private async Task<long> ResolveCurrentUserIdAsync()
         {
             if (currentUserId is not null)
@@ -177,36 +148,8 @@ namespace Pomodoro.Services
             }
 
             ClickUpList list = await GetJsonAsync<ClickUpList>($"{ApiBase}/list/{listId}");
-            List<ClickUpStatus> statuses = list.Statuses;
-
-            string toDo = NameContaining(statuses, ToDoNameFragment)
-                ?? NameContaining(statuses, ToDoNameFragmentAlt)
-                ?? OfType(statuses, UnstartedStatusType)
-                ?? statuses.FirstOrDefault()?.Status
-                ?? FallbackToDoStatus;
-
-            string inProgress = NameContaining(statuses, InProgressNameFragment)
-                ?? OfType(statuses, CustomStatusType)
-                ?? FallbackInProgressStatus;
-
-            string review = NameContaining(statuses, ReviewNameFragment)
-                ?? OfType(statuses, ClosedStatusType)
-                ?? OfType(statuses, DoneStatusType)
-                ?? FallbackReviewStatus;
-
-            workflow = new WorkflowStatuses(toDo, inProgress, review);
+            workflow = ClickUpWorkflow.Resolve(list.Statuses.Select(status => (status.Status, status.Type)).ToList());
             return workflow;
-        }
-
-        private static string? NameContaining(List<ClickUpStatus> statuses, string fragment)
-        {
-            return statuses
-                .FirstOrDefault(status => status.Status.Contains(fragment, StringComparison.OrdinalIgnoreCase))?.Status;
-        }
-
-        private static string? OfType(List<ClickUpStatus> statuses, string type)
-        {
-            return statuses.FirstOrDefault(status => status.Type == type)?.Status;
         }
 
         private Task<T> GetJsonAsync<T>(string requestUrl) where T : new()
@@ -254,9 +197,6 @@ namespace Pomodoro.Services
         [JsonPropertyName("due_date")]
         public string? DueDate { get; set; }
     }
-
-    /// <summary>The three list columns the widget drives, resolved to this list's custom names.</summary>
-    internal sealed record WorkflowStatuses(string ToDo, string InProgress, string Review);
 
     internal sealed class ClickUpList
     {

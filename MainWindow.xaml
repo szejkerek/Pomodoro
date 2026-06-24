@@ -150,7 +150,7 @@
                                                 </Button.Template>
                                             </Button>
                                             <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-                                                <TextBlock x:Name="label" Text="{Binding Content}" Foreground="White"
+                                                <TextBlock x:Name="label" Text="{Binding Label}" Foreground="White"
                                                            TextWrapping="Wrap" MaxWidth="205"/>
                                                 <!-- ClickUp: status tag, coloured by its workflow column -->
                                                 <TextBlock x:Name="statusLabel" Text="{Binding Status}"

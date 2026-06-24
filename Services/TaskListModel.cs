@@ -25,13 +25,15 @@ namespace Pomodoro.Services
         }
 
         public ObservableCollection<TodoistProject> Projects { get; } = new ObservableCollection<TodoistProject>();
-        public ObservableCollection<TodoistTask> Tasks { get; } = new ObservableCollection<TodoistTask>();
+        public ObservableCollection<TaskItem> Tasks { get; } = new ObservableCollection<TaskItem>();
 
         public string Hint { get; private set; }
         public event Action? HintChanged;
 
         public bool HasToken => gateway.HasToken;
-        public bool SupportsProjects => gateway.SupportsProjects;
+
+        /// <summary>True once a real project list is loaded (more than the synthetic "All" entry).</summary>
+        public bool HasProjects => Projects.Count > 1;
         public TaskSource ActiveSource => settings.Current.ActiveSource;
         public string SelectedProjectId => settings.Current.SelectedProjectId;
         public string? FocusedTaskId { get; private set; }
@@ -47,15 +49,7 @@ namespace Pomodoro.Services
                 return;
             }
 
-            if (gateway.SupportsProjects)
-            {
-                await LoadProjectsAsync();
-            }
-            else
-            {
-                Projects.Clear();
-            }
-
+            await LoadProjectsAsync();
             await LoadTasksAsync();
         }
 
@@ -77,13 +71,13 @@ namespace Pomodoro.Services
         /// </summary>
         public void Focus(string taskId)
         {
-            TodoistTask? target = Tasks.FirstOrDefault(task => task.Id == taskId);
+            TaskItem? target = Tasks.FirstOrDefault(task => task.Id == taskId);
             if (target is null)
             {
                 return;
             }
 
-            foreach (TodoistTask task in Tasks)
+            foreach (TaskItem task in Tasks)
             {
                 task.IsFocused = task == target;
             }
@@ -105,11 +99,6 @@ namespace Pomodoro.Services
         {
             string? previous = FocusedTaskId;
             Focus(taskId);
-
-            if (gateway.SupportsStatusWorkflow == false)
-            {
-                return;
-            }
 
             try
             {
@@ -133,7 +122,7 @@ namespace Pomodoro.Services
                 return;
             }
 
-            TodoistTask? task = Tasks.FirstOrDefault(candidate => candidate.Id == taskId);
+            TaskItem? task = Tasks.FirstOrDefault(candidate => candidate.Id == taskId);
             if (task is not null)
             {
                 task.Status = status;
@@ -145,7 +134,7 @@ namespace Pomodoro.Services
             try
             {
                 await gateway.CloseTaskAsync(taskId);
-                TodoistTask? closed = Tasks.FirstOrDefault(task => task.Id == taskId);
+                TaskItem? closed = Tasks.FirstOrDefault(task => task.Id == taskId);
                 if (closed is not null)
                 {
                     Tasks.Remove(closed);
@@ -186,11 +175,11 @@ namespace Pomodoro.Services
         {
             try
             {
-                IReadOnlyList<TodoistTask> activeTasks =
+                IReadOnlyList<TaskItem> activeTasks =
                     await gateway.GetActiveTasksAsync(settings.Current.TodoistFilter, settings.Current.SelectedProjectId);
 
                 Tasks.Clear();
-                foreach (TodoistTask task in activeTasks)
+                foreach (TaskItem task in activeTasks)
                 {
                     Tasks.Add(task);
                 }

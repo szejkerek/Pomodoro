@@ -21,10 +21,6 @@ namespace Pomodoro.Services
 
         public bool HasToken => apiToken.Length > 0;
 
-        public bool SupportsProjects => true;
-
-        public bool SupportsStatusWorkflow => false;
-
         public Task<string> ActivateTaskAsync(string taskId)
         {
             return Task.FromResult(string.Empty);
@@ -59,9 +55,9 @@ namespace Pomodoro.Services
             return collected;
         }
 
-        public async Task<IReadOnlyList<TodoistTask>> GetActiveTasksAsync(string filter, string projectId)
+        public async Task<IReadOnlyList<TaskItem>> GetActiveTasksAsync(string filter, string projectId)
         {
-            List<TodoistTask> collected = new List<TodoistTask>();
+            List<TodoistTaskDto> collected = new List<TodoistTaskDto>();
             string? cursor = null;
             int pageIndex = 0;
 
@@ -75,34 +71,37 @@ namespace Pomodoro.Services
             }
             while (HasMorePages(cursor, pageIndex));
 
-            foreach (TodoistTask task in collected)
-            {
-                task.DueDate = DueDateLabel.FromTodoist(task.Due?.Date);
-            }
-
-            await TagWithSectionNamesAsync(collected);
+            Dictionary<string, string> sectionNamesById = await GetSectionNamesByIdAsync(collected);
 
             // Match Todoist's manual ordering instead of raw API order.
-            return collected.OrderBy(task => task.ChildOrder).ToList();
+            return collected
+                .OrderBy(dto => dto.ChildOrder)
+                .Select(dto => ToTaskItem(dto, sectionNamesById))
+                .ToList();
+        }
+
+        private static TaskItem ToTaskItem(TodoistTaskDto dto, Dictionary<string, string> sectionNamesById)
+        {
+            TaskItem item = dto.ToTaskItem();
+            item.DueDate = DueDateLabel.FromTodoist(dto.Due?.Date);
+            if (dto.SectionId is not null && sectionNamesById.TryGetValue(dto.SectionId, out string? name))
+            {
+                item.SectionName = name;
+            }
+
+            return item;
         }
 
         // Informational only: show which section each task sits in. One section lookup per task load.
-        private async Task TagWithSectionNamesAsync(List<TodoistTask> tasks)
+        private async Task<Dictionary<string, string>> GetSectionNamesByIdAsync(List<TodoistTaskDto> tasks)
         {
             bool anySectioned = tasks.Any(task => string.IsNullOrEmpty(task.SectionId) == false);
             if (anySectioned == false)
             {
-                return;
+                return new Dictionary<string, string>();
             }
 
-            Dictionary<string, string> namesById = await GetSectionNamesAsync();
-            foreach (TodoistTask task in tasks)
-            {
-                if (task.SectionId is not null && namesById.TryGetValue(task.SectionId, out string? name))
-                {
-                    task.SectionName = name;
-                }
-            }
+            return await GetSectionNamesAsync();
         }
 
         private async Task<Dictionary<string, string>> GetSectionNamesAsync()
