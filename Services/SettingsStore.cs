@@ -32,7 +32,15 @@ namespace Pomodoro.Services
             {
                 string json = File.ReadAllText(settingsFilePath);
                 AppSettings? loaded = JsonSerializer.Deserialize<AppSettings>(json);
-                return loaded ?? new AppSettings();
+                if (loaded is null)
+                {
+                    return new AppSettings();
+                }
+
+                // Tokens are stored encrypted (DPAPI); decrypt for runtime use. Legacy plaintext passes through.
+                loaded.TodoistToken = TokenProtector.Unprotect(loaded.TodoistToken);
+                loaded.ClickUpToken = TokenProtector.Unprotect(loaded.ClickUpToken);
+                return loaded;
             }
             catch (JsonException)
             {
@@ -42,8 +50,21 @@ namespace Pomodoro.Services
 
         public void Save(AppSettings settings)
         {
-            string json = JsonSerializer.Serialize(settings, SerializerOptions);
-            File.WriteAllText(settingsFilePath, json);
+            // Encrypt tokens in the file only; the live settings object keeps them in plaintext for the gateways.
+            string todoistToken = settings.TodoistToken;
+            string clickUpToken = settings.ClickUpToken;
+            settings.TodoistToken = TokenProtector.Protect(todoistToken);
+            settings.ClickUpToken = TokenProtector.Protect(clickUpToken);
+            try
+            {
+                string json = JsonSerializer.Serialize(settings, SerializerOptions);
+                File.WriteAllText(settingsFilePath, json);
+            }
+            finally
+            {
+                settings.TodoistToken = todoistToken;
+                settings.ClickUpToken = clickUpToken;
+            }
         }
     }
 }

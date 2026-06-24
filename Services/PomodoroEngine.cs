@@ -28,6 +28,9 @@ namespace Pomodoro.Services
         public bool IsRunning { get; private set; }
         public int CompletedPomodoros { get; private set; }
 
+        /// <summary>Full length of the current mode in seconds — the duration it runs when not interrupted.</summary>
+        public int CurrentModeFullSeconds => FullSeconds(CurrentMode);
+
         /// <summary>Manual mode switch (tabs): keeps each mode's parked time intact.</summary>
         public void SwitchTo(TimerMode mode)
         {

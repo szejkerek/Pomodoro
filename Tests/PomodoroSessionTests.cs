@@ -117,6 +117,22 @@ namespace Pomodoro.Tests
         }
 
         [Fact]
+        public void Finishing_a_pomodoro_records_the_active_task()
+        {
+            ManualClock clock = new ManualClock();
+            InMemorySessionLog log = new InMemorySessionLog();
+            PomodoroSession session = new PomodoroSession(OneMinuteSettings(), clock, log);
+            session.ActiveTask = ("task-9", "Write report");
+
+            session.Start();
+            clock.Advance(60);
+
+            CompletedPomodoro entry = Assert.Single(log.All());
+            Assert.Equal("task-9", entry.TaskId);
+            Assert.Equal("Write report", entry.TaskLabel);
+        }
+
+        [Fact]
         public void Finishing_a_break_records_nothing()
         {
             AppSettings settings = OneMinuteSettings();

@@ -9,8 +9,6 @@ namespace Pomodoro.Services
     /// </summary>
     public sealed class PomodoroSession
     {
-        private const int SecondsPerMinute = 60;
-
         private readonly IClock clock;
         private readonly AppSettings settings;
         private readonly ISessionLog? sessionLog;
@@ -29,6 +27,9 @@ namespace Pomodoro.Services
         public int RemainingSeconds => engine.RemainingSeconds;
         public bool IsRunning => engine.IsRunning;
         public int CompletedPomodoros => engine.CompletedPomodoros;
+
+        /// <summary>The task the user is working on, stamped onto each finished pomodoro. Null when none.</summary>
+        public (string Id, string Label)? ActiveTask { get; set; }
 
         /// <summary>Anything that changes what the UI should show (every second + on state change).</summary>
         public event Action? Changed;
@@ -124,8 +125,9 @@ namespace Pomodoro.Services
                 return;
             }
 
-            int durationSeconds = settings.PomodoroMinutes * SecondsPerMinute;
-            sessionLog.Record(new CompletedPomodoro(clock.Now, durationSeconds, null, settings.ActiveSource));
+            // The engine knows the length the pomodoro actually ran, regardless of later settings edits.
+            sessionLog.Record(new CompletedPomodoro(
+                clock.Now, engine.CurrentModeFullSeconds, ActiveTask?.Id, settings.ActiveSource, ActiveTask?.Label));
         }
     }
 }

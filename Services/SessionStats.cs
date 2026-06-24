@@ -80,6 +80,21 @@ namespace Pomodoro.Services
             return peak;
         }
 
+        /// <summary>
+        /// Completed pomodoros grouped by task and ranked, busiest first. Entries without a task label
+        /// (untracked focus sessions) are excluded; the label is taken from the log so a task whose row
+        /// no longer exists is still named.
+        /// </summary>
+        public static IReadOnlyList<(string Label, int Count)> PomodorosByTask(IReadOnlyList<CompletedPomodoro> entries)
+        {
+            return entries
+                .Where(entry => string.IsNullOrEmpty(entry.TaskLabel) == false)
+                .GroupBy(entry => entry.TaskLabel!)
+                .Select(group => (Label: group.Key, Count: group.Count()))
+                .OrderByDescending(task => task.Count)
+                .ToList();
+        }
+
         public static int CurrentStreak(IReadOnlyList<CompletedPomodoro> entries, DateTime today)
         {
             HashSet<DateTime> activeDays = new HashSet<DateTime>(entries.Select(entry => entry.CompletedAt.Date));

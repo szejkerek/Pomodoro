@@ -33,6 +33,30 @@ namespace Pomodoro
             RenderSummary(entries);
             RenderHeatmap(SessionStats.WeeklySourceHeatmap(entries));
             RenderLegend();
+            RenderTopTasks(entries);
+        }
+
+        private const int TopTaskCount = 5;
+
+        private void RenderTopTasks(IReadOnlyList<CompletedPomodoro> entries)
+        {
+            IReadOnlyList<(string Label, int Count)> ranked = SessionStats.PomodorosByTask(entries);
+            if (ranked.Count == 0)
+            {
+                TopTasksTitle.Visibility = Visibility.Collapsed;
+                TopTasksPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            TopTasksPanel.Children.Clear();
+            foreach ((string Label, int Count) task in ranked.Take(TopTaskCount))
+            {
+                TopTasksPanel.Children.Add(new TextBlock
+                {
+                    Text = $"{task.Count} × {task.Label}",
+                    Margin = new Thickness(0, 1, 0, 1)
+                });
+            }
         }
 
         private void RenderSummary(IReadOnlyList<CompletedPomodoro> entries)
@@ -154,8 +178,7 @@ namespace Pomodoro
 
         private static Grid BuildStripes(int[] sourceCounts, int total, int peak)
         {
-            double intensity = (double)total / peak;
-            byte alpha = (byte)(MinHeatAlpha + intensity * (0xFF - MinHeatAlpha));
+            byte alpha = HeatScale.Alpha(total, peak, MinHeatAlpha);
 
             Grid stripes = new Grid();
             for (int source = 0; source < sourceCounts.Length; source++)

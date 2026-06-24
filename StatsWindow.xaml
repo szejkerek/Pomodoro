@@ -33,5 +33,8 @@
 
         <TextBlock Text="Each cell = pomodoros that hour, coloured by the context you worked in."
                    Foreground="#777777" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+        <TextBlock x:Name="TopTasksTitle" Text="TOP TASKS" Style="{StaticResource GroupTitle}"/>
+        <StackPanel x:Name="TopTasksPanel"/>
     </StackPanel>
 </Window>

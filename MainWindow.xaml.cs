@@ -1,8 +1,11 @@
 using System.Linq;
 using System.Media;
+using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using Pomodoro.Models;
 using Pomodoro.Presentation;
@@ -25,7 +28,28 @@ namespace Pomodoro
 
         // Focus mode: the widget goes near-black and strips to just the banner + timer while running.
         private static readonly Color FocusBackgroundColor = Color.FromRgb(0x0D, 0x0D, 0x0D);
-        private static readonly SolidColorBrush FocusBackgroundBrush = new SolidColorBrush(FocusBackgroundColor);
+        private static readonly SolidColorBrush FocusBackgroundBrush = Frozen(FocusBackgroundColor);
+
+        // One frozen brush per mode, built once — Render runs every second and must not allocate brushes.
+        private static readonly Dictionary<TimerMode, SolidColorBrush> ModeBackgrounds = BuildModeBackgrounds();
+
+        private static Dictionary<TimerMode, SolidColorBrush> BuildModeBackgrounds()
+        {
+            Dictionary<TimerMode, SolidColorBrush> brushes = new Dictionary<TimerMode, SolidColorBrush>();
+            foreach (TimerMode mode in Enum.GetValues<TimerMode>())
+            {
+                brushes[mode] = Frozen(ModeTheme.For(mode).Background);
+            }
+
+            return brushes;
+        }
+
+        private static SolidColorBrush Frozen(Color color)
+        {
+            SolidColorBrush brush = new SolidColorBrush(color);
+            brush.Freeze();
+            return brush;
+        }
 
         private readonly SettingsService settings = new SettingsService(new SettingsStore());
         private readonly AutoStartManager autoStartManager = new AutoStartManager();
@@ -34,6 +58,7 @@ namespace Pomodoro
         private readonly ITaskGateway asanaGateway = new NullTaskGateway();
         private readonly ITaskGateway gateway;
         private readonly ISessionLog sessionLog = new JsonSessionLog();
+        private readonly UpdateChecker updateChecker = new UpdateChecker(new HttpClient());
         private readonly TaskListModel taskList;
         private readonly PomodoroSession session;
 
@@ -42,6 +67,15 @@ namespace Pomodoro
             new PendingCompletions(new DispatcherClock(), CompletionDelaySeconds);
 
         private bool isPopulatingProjects;
+
+        // Global start/pause hotkey: Ctrl+Alt+P, works even when the widget isn't focused.
+        private const int HotkeyId = 0x9001;
+        private const int WmHotkey = 0x0312;
+        private const uint ModAlt = 0x0001;
+        private const uint ModControl = 0x0002;
+        private const uint ModNoRepeat = 0x4000;
+        private const uint VkP = 0x50;
+        private IntPtr windowHandle;
 
         public MainWindow()
         {
@@ -64,16 +98,61 @@ namespace Pomodoro
             ConfigureGateways();
 
             Render();
+            RenderStreak();
             UpdateSourceUi();
             ShowHint(taskList.Hint);
 
-            Loaded += async (_, _) => await SyncAsync();
+            Loaded += async (_, _) =>
+            {
+                await SyncAsync();
+                await CheckForUpdateAsync();
+            };
+        }
+
+        private async Task CheckForUpdateAsync()
+        {
+            string current = GetType().Assembly.GetName().Version?.ToString() ?? "0.0.0";
+            string? newer = await updateChecker.LatestNewerThanAsync(current);
+            if (newer is null)
+            {
+                return;
+            }
+
+            ToastWindow toast = new ToastWindow($"Update available: {newer}\ngithub.com/szejkerek/Pomodoro/releases") { Owner = this };
+            toast.Show();
         }
 
         private void ConfigureGateways()
         {
             gateway.Configure(settings.Current);
         }
+
+        // ---- Global hotkey ----
+
+        protected override void OnSourceInitialized(EventArgs eventArgs)
+        {
+            base.OnSourceInitialized(eventArgs);
+            windowHandle = new WindowInteropHelper(this).Handle;
+            HwndSource.FromHwnd(windowHandle)?.AddHook(OnWindowMessage);
+            RegisterHotKey(windowHandle, HotkeyId, ModControl | ModAlt | ModNoRepeat, VkP);
+        }
+
+        private IntPtr OnWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (message == WmHotkey && wParam.ToInt32() == HotkeyId)
+            {
+                session.ToggleStartPause();
+                handled = true;
+            }
+
+            return IntPtr.Zero;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr handle, int id, uint modifiers, uint virtualKey);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr handle, int id);
 
         // ---- Timer controls (delegate to the session) ----
 
@@ -108,6 +187,21 @@ namespace Pomodoro
             {
                 SystemSounds.Asterisk.Play();
             }
+
+            // The streak only changes when a session finishes, so recompute here rather than every tick.
+            RenderStreak();
+            ShowFinishedToast();
+        }
+
+        private void ShowFinishedToast()
+        {
+            // By now the engine has advanced to the next mode, so the upcoming mode tells us what just ended.
+            string message = session.CurrentMode == TimerMode.Pomodoro
+                ? "Break's over — back to focus 🍅"
+                : "Pomodoro done — take a break ☕";
+
+            ToastWindow toast = new ToastWindow(message) { Owner = this };
+            toast.Show();
         }
 
         private void OnHeatmapClick(object sender, RoutedEventArgs eventArgs)
@@ -170,6 +264,7 @@ namespace Pomodoro
         private async Task SyncAsync()
         {
             ClearPendingCompletions();
+            session.ActiveTask = null;
             await taskList.SyncAsync();
             RestoreProjectSelection();
             UpdateSourceUi();
@@ -214,6 +309,9 @@ namespace Pomodoro
                 // Focusing a task is also the quick way out of an accidental completion.
                 CancelPendingCompletion(taskId);
                 await taskList.FocusAsync(taskId);
+
+                TodoistTask? task = taskList.Tasks.FirstOrDefault(candidate => candidate.Id == taskId);
+                session.ActiveTask = task is null ? null : (task.Id, task.Content);
             }
         }
 
@@ -275,10 +373,10 @@ namespace Pomodoro
         private void Render()
         {
             bool isFocusMode = session.IsRunning;
-            Color modeColor = ModeTheme.For(session.CurrentMode).Background;
+            SolidColorBrush modeBrush = ModeBackgrounds[session.CurrentMode];
 
-            RootBorder.Background = isFocusMode ? FocusBackgroundBrush : new SolidColorBrush(modeColor);
-            StartButton.Foreground = new SolidColorBrush(isFocusMode ? FocusBackgroundColor : modeColor);
+            RootBorder.Background = isFocusMode ? FocusBackgroundBrush : modeBrush;
+            StartButton.Foreground = isFocusMode ? FocusBackgroundBrush : modeBrush;
 
             StyleTab(TabPomodoro, session.CurrentMode == TimerMode.Pomodoro);
             StyleTab(TabShort, session.CurrentMode == TimerMode.ShortBreak);
@@ -291,8 +389,6 @@ namespace Pomodoro
             TimeText.Text = $"{minutes:00}:{seconds:00}";
             StartButton.Content = isFocusMode ? "PAUSE" : "START";
             Title = $"{TimeText.Text} · Pomodoro";
-
-            RenderStreak();
         }
 
         private void ApplyFocusMode(bool isFocusMode)
@@ -338,6 +434,11 @@ namespace Pomodoro
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs eventArgs)
         {
+            if (windowHandle != IntPtr.Zero)
+            {
+                UnregisterHotKey(windowHandle, HotkeyId);
+            }
+
             settings.Update(current =>
             {
                 current.WindowLeft = Left;
