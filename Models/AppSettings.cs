@@ -25,6 +25,10 @@ namespace Pomodoro.Models
         public string BlockedHosts { get; set; } = DefaultBlockedHosts;
         public string BlockedProcesses { get; set; } = DefaultBlockedProcesses;
 
+        public bool BlockWorkToolsOutsideWork { get; set; } = true;
+        public string WorkBlockedHosts { get; set; } = DefaultWorkBlockedHosts;
+        public string WorkBlockedProcesses { get; set; } = DefaultWorkBlockedProcesses;
+
         public double? WindowLeft { get; set; }
         public double? WindowTop { get; set; }
 
@@ -34,16 +38,64 @@ namespace Pomodoro.Models
         private const string DefaultBlockedProcesses =
             "Spotify\nsteam\nDiscord";
 
-        /// <summary>The blocked domains, one per line, trimmed and without blanks.</summary>
+        private const string DefaultWorkBlockedHosts =
+            "asana.com\napp.asana.com\nslack.com";
+
+        private const string DefaultWorkBlockedProcesses =
+            "Slack";
+
+        /// <summary>The base blocked domains, one per line, trimmed and without blanks.</summary>
         public IReadOnlyList<string> BlockedHostList()
         {
             return SplitLines(BlockedHosts, stripExeSuffix: false);
         }
 
-        /// <summary>The blocked process names, one per line, trimmed, with any trailing ".exe" removed.</summary>
+        /// <summary>The base blocked process names, one per line, trimmed, with any trailing ".exe" removed.</summary>
         public IReadOnlyList<string> BlockedProcessList()
         {
             return SplitLines(BlockedProcesses, stripExeSuffix: true);
+        }
+
+        /// <summary>Work-tool domains (Asana, Slack, …) — blocked only when the active context isn't work.</summary>
+        public IReadOnlyList<string> WorkBlockedHostList()
+        {
+            return SplitLines(WorkBlockedHosts, stripExeSuffix: false);
+        }
+
+        /// <summary>Work-tool process names — blocked only when the active context isn't work.</summary>
+        public IReadOnlyList<string> WorkBlockedProcessList()
+        {
+            return SplitLines(WorkBlockedProcesses, stripExeSuffix: true);
+        }
+
+        /// <summary>
+        /// The domains to block for the current focus session: the always-blocked list, plus the
+        /// work-tool domains unless the active context is work (where those tools are needed).
+        /// </summary>
+        public IReadOnlyList<string> ActiveBlockedHostList()
+        {
+            return CombineForActiveContext(BlockedHostList(), WorkBlockedHostList());
+        }
+
+        /// <summary>The processes to block for the current focus session; see <see cref="ActiveBlockedHostList"/>.</summary>
+        public IReadOnlyList<string> ActiveBlockedProcessList()
+        {
+            return CombineForActiveContext(BlockedProcessList(), WorkBlockedProcessList());
+        }
+
+        private bool IsWorkContext => ActiveSource == TaskSource.Asana;
+
+        private IReadOnlyList<string> CombineForActiveContext(
+            IReadOnlyList<string> always,
+            IReadOnlyList<string> workTools)
+        {
+            List<string> combined = new List<string>(always);
+            if (BlockWorkToolsOutsideWork && IsWorkContext == false)
+            {
+                combined.AddRange(workTools);
+            }
+
+            return combined;
         }
 
         private static IReadOnlyList<string> SplitLines(string text, bool stripExeSuffix)

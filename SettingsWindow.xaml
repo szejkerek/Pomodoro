@@ -93,6 +93,19 @@
         <TextBlock Text="Requires admin. Browsers with Secure DNS may bypass site blocking."
                    Foreground="#777777" FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
+        <TextBlock Text="WORK TOOLS" Style="{StaticResource GroupTitle}"/>
+        <CheckBox x:Name="BlockWorkToolsBox" Content="Block work tools outside work context"/>
+        <TextBlock Text="Work sites (one domain per line)" Margin="0,6,0,0"/>
+        <TextBox x:Name="WorkBlockedHostsBox" Margin="0,3" Width="Auto" HorizontalAlignment="Stretch"
+                 AcceptsReturn="True" TextWrapping="NoWrap" Height="48"
+                 VerticalScrollBarVisibility="Auto"/>
+        <TextBlock Text="Work apps (one .exe name per line)" Margin="0,6,0,0"/>
+        <TextBox x:Name="WorkBlockedProcessesBox" Margin="0,3" Width="Auto" HorizontalAlignment="Stretch"
+                 AcceptsReturn="True" TextWrapping="NoWrap" Height="48"
+                 VerticalScrollBarVisibility="Auto"/>
+        <TextBlock Text="Blocked during life (Todoist) and hobby (ClickUp) focus, allowed during work (Asana) focus."
+                   Foreground="#777777" FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
             <Button Content="Cancel" Click="OnCancelClick" Padding="14,5" Margin="0,0,8,0" IsCancel="True"/>
             <Button Content="Save" Click="OnSaveClick" Padding="14,5" IsDefault="True"/>

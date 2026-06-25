@@ -88,8 +88,8 @@ namespace Pomodoro
             session = new PomodoroSession(settings.Current, new DispatcherClock(), sessionLog);
 
             focusBlocker = new CompositeFocusBlocker(
-                new HostsFileBlocker(() => settings.Current.BlockedHostList()),
-                new ProcessBlocker(new DispatcherClock(), new ProcessKiller(), () => settings.Current.BlockedProcessList()));
+                new HostsFileBlocker(() => settings.Current.ActiveBlockedHostList()),
+                new ProcessBlocker(new DispatcherClock(), new ProcessKiller(), () => settings.Current.ActiveBlockedProcessList()));
             focusGuard = new FocusGuard(focusBlocker, () => settings.Current.BlockDistractionsEnabled);
 
             controller = new SessionController(

@@ -36,6 +36,10 @@ namespace Pomodoro
             BlockDistractionsBox.IsChecked = settings.BlockDistractionsEnabled;
             BlockedHostsBox.Text = settings.BlockedHosts;
             BlockedProcessesBox.Text = settings.BlockedProcesses;
+
+            BlockWorkToolsBox.IsChecked = settings.BlockWorkToolsOutsideWork;
+            WorkBlockedHostsBox.Text = settings.WorkBlockedHosts;
+            WorkBlockedProcessesBox.Text = settings.WorkBlockedProcesses;
         }
 
         private void OnSaveClick(object sender, RoutedEventArgs eventArgs)
@@ -59,6 +63,10 @@ namespace Pomodoro
             settings.BlockDistractionsEnabled = BlockDistractionsBox.IsChecked == true;
             settings.BlockedHosts = BlockedHostsBox.Text.Trim();
             settings.BlockedProcesses = BlockedProcessesBox.Text.Trim();
+
+            settings.BlockWorkToolsOutsideWork = BlockWorkToolsBox.IsChecked == true;
+            settings.WorkBlockedHosts = WorkBlockedHostsBox.Text.Trim();
+            settings.WorkBlockedProcesses = WorkBlockedProcessesBox.Text.Trim();
 
             DialogResult = true;
         }
