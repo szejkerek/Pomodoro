@@ -27,6 +27,7 @@ namespace Pomodoro
             SoundBox.IsChecked = settings.SoundEnabled;
             StartWithWindowsBox.IsChecked = settings.StartWithWindows;
             FocusRadioBox.IsChecked = settings.FocusRadioEnabled;
+            RadioStationsBox.Text = settings.RadioStations;
 
             TokenBox.Password = settings.TodoistToken;
             FilterBox.Text = settings.TodoistFilter;
@@ -55,6 +56,7 @@ namespace Pomodoro
             settings.SoundEnabled = SoundBox.IsChecked == true;
             settings.StartWithWindows = StartWithWindowsBox.IsChecked == true;
             settings.FocusRadioEnabled = FocusRadioBox.IsChecked == true;
+            settings.RadioStations = RadioStationsBox.Text.Trim();
 
             settings.TodoistToken = TokenBox.Password.Trim();
             settings.TodoistFilter = FilterBox.Text.Trim();

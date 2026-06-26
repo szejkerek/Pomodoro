@@ -15,6 +15,7 @@ namespace Pomodoro.Models
         public bool FocusRadioEnabled { get; set; } = false;
         public int RadioStationIndex { get; set; } = 0;
         public double RadioVolume { get; set; } = 0.5;
+        public string RadioStations { get; set; } = DefaultRadioStations;
 
         public TaskSource ActiveSource { get; set; } = TaskSource.Todoist;
 
@@ -47,6 +48,22 @@ namespace Pomodoro.Models
 
         private const string DefaultWorkBlockedProcesses =
             "Slack";
+
+        // Focus-radio presets, one "Category | Name | https://stream" per line, across lo-fi,
+        // synthwave, classical, and noise. All direct MP3 streams that allow listening without a
+        // key; the lo-fi entry redirects to a fresh stream URL each play.
+        private const string DefaultRadioStations =
+            "Lo-fi | Chillhop (FluxFM) | https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/\n" +
+            "Lo-fi | Fluid (instrumental hip-hop) | https://ice1.somafm.com/fluid-128-mp3\n" +
+            "Lo-fi | Groove Salad | https://ice1.somafm.com/groovesalad-128-mp3\n" +
+            "Synthwave | Nightride FM | https://stream.nightride.fm/nightride.mp3\n" +
+            "Synthwave | Chillsynth | https://stream.nightride.fm/chillsynth.mp3\n" +
+            "Synthwave | Datawave | https://stream.nightride.fm/datawave.mp3\n" +
+            "Synthwave | Underground 80s | https://ice1.somafm.com/u80s-128-mp3\n" +
+            "Classical | WCPE | https://audio-mp3.ibiblio.org/wcpe.mp3\n" +
+            "Classical | Venice Classic Radio | https://uk2.streamingpulse.com/ssl/vcr1\n" +
+            "Pink noise | Pink Noise Radio | http://uk1.internet-radio.com:8004/stream\n" +
+            "Brown noise | Brown Noise Radio | http://uk1.internet-radio.com:8280/stream";
 
         /// <summary>The base blocked domains, one per line, trimmed and without blanks.</summary>
         public IReadOnlyList<string> BlockedHostList()
@@ -85,6 +102,55 @@ namespace Pomodoro.Models
         public IReadOnlyList<string> ActiveBlockedProcessList()
         {
             return CombineForActiveContext(BlockedProcessList(), WorkBlockedProcessList());
+        }
+
+        /// <summary>
+        /// The configured radio presets, one "Category | Name | https://stream" per line. The
+        /// legacy "Name | https://stream" form (no category) is still accepted. Lines without a
+        /// name and URL, or with an invalid absolute URL, are skipped.
+        /// </summary>
+        public IReadOnlyList<RadioStation> RadioStationList()
+        {
+            List<RadioStation> stations = new List<RadioStation>();
+            foreach (string rawLine in RadioStations.Split('\n'))
+            {
+                string line = rawLine.Trim();
+                if (line.Length == 0)
+                {
+                    continue;
+                }
+
+                string[] parts = line.Split('|');
+                if (parts.Length < 2)
+                {
+                    continue;
+                }
+
+                string category;
+                string name;
+                string url;
+                if (parts.Length >= 3)
+                {
+                    category = parts[0].Trim();
+                    name = string.Join("|", parts[1..^1]).Trim();
+                    url = parts[^1].Trim();
+                }
+                else
+                {
+                    category = string.Empty;
+                    name = parts[0].Trim();
+                    url = parts[1].Trim();
+                }
+
+                if (name.Length == 0 || Uri.TryCreate(url, UriKind.Absolute, out Uri? streamUri) == false)
+                {
+                    continue;
+                }
+
+                stations.Add(new RadioStation(name, streamUri, category));
+            }
+
+            return stations;
         }
 
         private bool IsWorkContext => ActiveSource == TaskSource.Asana;

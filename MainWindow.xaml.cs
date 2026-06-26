@@ -237,9 +237,26 @@ namespace Pomodoro
             radioModel.ToggleMute();
         }
 
-        private void OnRadioSkipClick(object sender, RoutedEventArgs eventArgs)
+        private void OnRadioCategoryClick(object sender, RoutedEventArgs eventArgs)
         {
-            radioModel.Skip();
+            ContextMenu menu = new ContextMenu();
+            string? currentCategory = radioModel.CurrentCategory;
+
+            foreach (string category in radioModel.Categories)
+            {
+                MenuItem item = new MenuItem
+                {
+                    Header = category,
+                    IsCheckable = true,
+                    IsChecked = category == currentCategory
+                };
+                item.Click += (_, _) => radioModel.SelectCategory(category);
+                menu.Items.Add(item);
+            }
+
+            menu.PlacementTarget = (UIElement)sender;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+            menu.IsOpen = true;
         }
 
         private void OnRadioVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> eventArgs)
@@ -409,13 +426,27 @@ namespace Pomodoro
 
             SoundWaves.Visibility = radioModel.IsMuted ? Visibility.Collapsed : Visibility.Visible;
             MuteSlash.Visibility = radioModel.IsMuted ? Visibility.Visible : Visibility.Collapsed;
-            Equalizer.ToolTip = radioModel.CurrentStation.Name;
+            RadioStation? currentStation = radioModel.CurrentStation;
+            Equalizer.ToolTip = currentStation?.Name;
+            RadioCategory.Text = CategoryCaption(currentStation);
 
             isSettingVolume = true;
             RadioVolumeSlider.Value = radioModel.Volume;
             isSettingVolume = false;
 
             UpdateEqualizerAnimation(radioModel.IsPlaying);
+        }
+
+        // The category is what plays right now (e.g. "Lo-fi"); fall back to the station name when
+        // a preset has no category set.
+        private static string CategoryCaption(RadioStation? station)
+        {
+            if (station == null)
+            {
+                return string.Empty;
+            }
+
+            return station.Category.Length > 0 ? station.Category : station.Name;
         }
 
         // The bars bounce only while audible — start the looping storyboard on play, freeze it on pause.

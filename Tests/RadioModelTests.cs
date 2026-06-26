@@ -50,6 +50,8 @@ namespace Pomodoro.Tests
             return new AppSettings { FocusRadioEnabled = true };
         }
 
+        private static IReadOnlyList<RadioStation> DefaultStations => new AppSettings().RadioStationList();
+
         [Fact]
         public void Entering_focus_loads_current_station_then_plays_when_enabled()
         {
@@ -60,7 +62,7 @@ namespace Pomodoro.Tests
             Assert.True(model.IsPlaying);
             Assert.True(model.IsActive);
             Assert.Single(player.Loaded);
-            Assert.Equal(RadioStations.All[0].StreamUri, player.Loaded[0]);
+            Assert.Equal(DefaultStations[0].StreamUri, player.Loaded[0]);
             Assert.Equal(1, player.PlayCount);
         }
 
@@ -123,39 +125,64 @@ namespace Pomodoro.Tests
         }
 
         [Fact]
-        public void Skip_advances_with_wraparound_and_persists_index()
+        public void SelectCategory_switches_to_first_station_of_that_category_and_persists()
         {
-            AppSettings seed = new AppSettings { RadioStationIndex = RadioStations.All.Count - 1 };
-            (RadioModel model, _, SettingsService settings) = Build(seed);
+            (RadioModel model, _, SettingsService settings) = Build(Enabled());
 
-            model.Skip();
+            model.SelectCategory("Synthwave");
 
-            Assert.Equal(RadioStations.All[0].Name, model.CurrentStation.Name);
-            Assert.Equal(0, settings.Current.RadioStationIndex);
+            Assert.Equal("Synthwave", model.CurrentStation!.Category);
+            Assert.Equal(DefaultStations[3].Name, model.CurrentStation!.Name);
+            Assert.Equal(3, settings.Current.RadioStationIndex);
         }
 
         [Fact]
-        public void Skip_reloads_and_resumes_only_when_already_playing()
+        public void Selecting_the_current_category_cycles_within_it_with_wraparound()
+        {
+            (RadioModel model, _, _) = Build(Enabled());
+
+            model.SelectCategory("Lo-fi");
+            Assert.Equal(DefaultStations[1].Name, model.CurrentStation!.Name);
+
+            model.SelectCategory("Lo-fi");
+            Assert.Equal(DefaultStations[2].Name, model.CurrentStation!.Name);
+
+            model.SelectCategory("Lo-fi");
+            Assert.Equal(DefaultStations[0].Name, model.CurrentStation!.Name);
+        }
+
+        [Fact]
+        public void SelectCategory_reloads_and_resumes_only_when_already_playing()
         {
             (RadioModel model, RecordingRadioPlayer player, _) = Build(Enabled());
 
             model.FollowFocus(focusActive: true);
-            int playsBeforeSkip = player.PlayCount;
-            model.Skip();
+            int playsBefore = player.PlayCount;
+            model.SelectCategory("Classical");
 
-            Assert.Equal(RadioStations.All[1].StreamUri, player.Loaded[^1]);
-            Assert.Equal(playsBeforeSkip + 1, player.PlayCount);
+            Assert.Equal(DefaultStations[7].StreamUri, player.Loaded[^1]);
+            Assert.Equal(playsBefore + 1, player.PlayCount);
         }
 
         [Fact]
-        public void Skip_while_not_focusing_loads_but_does_not_play()
+        public void SelectCategory_ignores_an_unknown_category()
         {
-            (RadioModel model, RecordingRadioPlayer player, _) = Build(Enabled());
+            (RadioModel model, _, SettingsService settings) = Build(Enabled());
 
-            model.Skip();
+            model.SelectCategory("Polka");
 
-            Assert.Equal(RadioStations.All[1].StreamUri, player.Loaded[^1]);
-            Assert.Equal(0, player.PlayCount);
+            Assert.Equal(0, settings.Current.RadioStationIndex);
+            Assert.Equal(DefaultStations[0].Name, model.CurrentStation!.Name);
+        }
+
+        [Fact]
+        public void Categories_lists_each_distinct_category_once_in_order()
+        {
+            (RadioModel model, _, _) = Build(Enabled());
+
+            Assert.Equal(
+                new[] { "Lo-fi", "Synthwave", "Classical", "Pink noise", "Brown noise" },
+                model.Categories);
         }
 
         [Theory]
@@ -179,7 +206,7 @@ namespace Pomodoro.Tests
             AppSettings seed = new AppSettings { RadioStationIndex = 2, RadioVolume = 0.8 };
             (RadioModel model, RecordingRadioPlayer player, _) = Build(seed);
 
-            Assert.Equal(RadioStations.All[2].Name, model.CurrentStation.Name);
+            Assert.Equal(DefaultStations[2].Name, model.CurrentStation!.Name);
             Assert.Equal(0.8, model.Volume);
             Assert.Equal(0.8, player.LastVolume);
         }
@@ -190,7 +217,50 @@ namespace Pomodoro.Tests
             AppSettings seed = new AppSettings { RadioStationIndex = 99 };
             (RadioModel model, _, _) = Build(seed);
 
-            Assert.Equal(RadioStations.All[0].Name, model.CurrentStation.Name);
+            Assert.Equal(DefaultStations[0].Name, model.CurrentStation!.Name);
+        }
+
+        [Fact]
+        public void RadioStationList_parses_category_name_and_url()
+        {
+            AppSettings settings = new AppSettings
+            {
+                RadioStations = "Lo-fi | Chillhop | https://example.com/lofi"
+            };
+
+            RadioStation station = settings.RadioStationList()[0];
+
+            Assert.Equal("Lo-fi", station.Category);
+            Assert.Equal("Chillhop", station.Name);
+            Assert.Equal("https://example.com/lofi", station.StreamUri.ToString());
+        }
+
+        [Fact]
+        public void RadioStationList_accepts_legacy_lines_without_a_category()
+        {
+            AppSettings settings = new AppSettings
+            {
+                RadioStations = "Chillhop | https://example.com/lofi"
+            };
+
+            RadioStation station = settings.RadioStationList()[0];
+
+            Assert.Equal(string.Empty, station.Category);
+            Assert.Equal("Chillhop", station.Name);
+        }
+
+        [Fact]
+        public void RadioStationList_skips_malformed_lines()
+        {
+            AppSettings settings = new AppSettings
+            {
+                RadioStations = "no separator here\nLo-fi | Bad | not-a-url\nClassical | WCPE | https://example.com/wcpe"
+            };
+
+            IReadOnlyList<RadioStation> stations = settings.RadioStationList();
+
+            Assert.Single(stations);
+            Assert.Equal("WCPE", stations[0].Name);
         }
     }
 }

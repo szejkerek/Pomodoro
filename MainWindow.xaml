@@ -133,10 +133,10 @@
                     </Grid>
                 </Button>
 
-                <!-- Beat-reactive bars; station name lives in the tooltip -->
-                <StackPanel x:Name="Equalizer" Grid.Column="1" Orientation="Horizontal"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Height="18" Margin="6,0">
+                <!-- Beat-reactive bars over the playing category; station name lives in the tooltip -->
+                <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="6,0">
+                <StackPanel x:Name="Equalizer" Orientation="Horizontal"
+                            HorizontalAlignment="Center" Height="18">
                     <StackPanel.Resources>
                         <Style TargetType="Rectangle">
                             <Setter Property="Width" Value="3"/>
@@ -158,12 +158,17 @@
                     <Rectangle x:Name="Bar5"><Rectangle.RenderTransform><ScaleTransform ScaleY="0.55"/></Rectangle.RenderTransform></Rectangle>
                     <Rectangle x:Name="Bar6"><Rectangle.RenderTransform><ScaleTransform ScaleY="0.55"/></Rectangle.RenderTransform></Rectangle>
                 </StackPanel>
+                    <TextBlock x:Name="RadioCategory" HorizontalAlignment="Center"
+                               FontSize="9" Foreground="White" Opacity="0.7" Margin="0,2,0,0"/>
+                </StackPanel>
 
-                <Button x:Name="RadioSkipButton" Grid.Column="2" Style="{StaticResource IconButton}"
-                        VerticalAlignment="Center" ToolTip="Next station" Click="OnRadioSkipClick">
+                <!-- Category picker: opens a menu of the configured music categories -->
+                <Button x:Name="RadioCategoryButton" Grid.Column="2" Style="{StaticResource IconButton}"
+                        VerticalAlignment="Center" ToolTip="Choose category" Click="OnRadioCategoryClick">
                     <Grid Width="16" Height="16">
                         <Path Fill="White" Opacity="0.85" Stretch="None"
-                              Data="M3,3 L11,8 L3,13 Z M12,3 L14,3 L14,13 L12,13 Z"/>
+                              Data="M2,3 L14,3 M2,8 L14,8 M2,13 L14,13"
+                              Stroke="White" StrokeThickness="1.4"/>
                     </Grid>
                 </Button>
                 <Slider x:Name="RadioVolumeSlider" Grid.Column="3" Width="64"

@@ -103,6 +103,14 @@
                         <CheckBox x:Name="SoundBox" Content="Sound when finished"/>
                         <CheckBox x:Name="StartWithWindowsBox" Content="Start with Windows"/>
                         <CheckBox x:Name="FocusRadioBox" Content="Play focus radio while focusing"/>
+
+                        <TextBlock Text="RADIO STATIONS" Style="{StaticResource GroupTitle}"/>
+                        <TextBlock Text="One per line, as &quot;Category | Name | https://stream&quot;"/>
+                        <TextBox x:Name="RadioStationsBox" Margin="0,3" Width="Auto" HorizontalAlignment="Stretch"
+                                 AcceptsReturn="True" TextWrapping="NoWrap" Height="96"
+                                 VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Text="Skip cycles through these. Malformed lines are ignored."
+                                   Style="{StaticResource Hint}"/>
                     </StackPanel>
                 </StackPanel>
             </TabItem>

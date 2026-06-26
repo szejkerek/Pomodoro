@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Pomodoro.Models;
 
 namespace Pomodoro.Services
@@ -9,7 +10,8 @@ namespace Pomodoro.Services
     /// <see cref="SettingsService"/> (the one place settings are saved). The window binds to its
     /// state and re-renders on <see cref="Changed"/>. Playback follows the focus session: it starts
     /// when focus begins (opt-in via <see cref="AppSettings.FocusRadioEnabled"/>) and stops when it
-    /// ends — the only manual control during focus is mute.
+    /// ends — the only manual control during focus is mute. The station catalog is whatever the user
+    /// configured in <see cref="AppSettings.RadioStationList"/>; an empty catalog means no playback.
     /// </summary>
     public sealed class RadioModel
     {
@@ -36,7 +38,31 @@ namespace Pomodoro.Services
         /// <summary>Fired when station, volume, mute, or playback state changes, so the window re-renders.</summary>
         public event Action? Changed;
 
-        public RadioStation CurrentStation => RadioStations.All[stationIndex];
+        private IReadOnlyList<RadioStation> Stations => settings.Current.RadioStationList();
+
+        public bool HasStations => Stations.Count > 0;
+
+        public RadioStation? CurrentStation => HasStations ? Stations[ClampStationIndex(stationIndex)] : null;
+
+        public string? CurrentCategory => CurrentStation?.Category;
+
+        /// <summary>The distinct, non-empty categories across the configured stations, in list order.</summary>
+        public IReadOnlyList<string> Categories
+        {
+            get
+            {
+                List<string> categories = new List<string>();
+                foreach (RadioStation station in Stations)
+                {
+                    if (station.Category.Length > 0 && categories.Contains(station.Category) == false)
+                    {
+                        categories.Add(station.Category);
+                    }
+                }
+
+                return categories;
+            }
+        }
 
         public bool IsPlaying { get; private set; }
 
@@ -68,14 +94,42 @@ namespace Pomodoro.Services
             Changed?.Invoke();
         }
 
-        /// <summary>Advance to the next station (wrapping), reload it, and resume only if already playing.</summary>
-        public void Skip()
+        /// <summary>
+        /// Switch to the given category: jump to its first station, or — if the current station is
+        /// already in that category — advance to the next station within it (wrapping). Reloads the
+        /// stream, persists the choice, and resumes only if already playing.
+        /// </summary>
+        public void SelectCategory(string category)
         {
-            stationIndex = (stationIndex + 1) % RadioStations.All.Count;
+            IReadOnlyList<RadioStation> stations = Stations;
+            List<int> categoryIndexes = new List<int>();
+            for (int index = 0; index < stations.Count; index++)
+            {
+                if (string.Equals(stations[index].Category, category, StringComparison.OrdinalIgnoreCase))
+                {
+                    categoryIndexes.Add(index);
+                }
+            }
+
+            if (categoryIndexes.Count == 0)
+            {
+                return;
+            }
+
+            int positionInCategory = categoryIndexes.IndexOf(stationIndex);
+            int target = positionInCategory >= 0
+                ? categoryIndexes[(positionInCategory + 1) % categoryIndexes.Count]
+                : categoryIndexes[0];
+
+            if (target == stationIndex)
+            {
+                return;
+            }
+
+            stationIndex = target;
             settings.Update(current => current.RadioStationIndex = stationIndex);
 
-            player.Load(CurrentStation.StreamUri);
-            isStreamLoaded = true;
+            LoadCurrentStation();
 
             if (IsPlaying)
             {
@@ -96,7 +150,7 @@ namespace Pomodoro.Services
 
         private void ApplyPlayback()
         {
-            bool shouldPlay = isFocusActive && settings.Current.FocusRadioEnabled && IsMuted == false;
+            bool shouldPlay = isFocusActive && settings.Current.FocusRadioEnabled && IsMuted == false && HasStations;
             if (shouldPlay == IsPlaying)
             {
                 return;
@@ -121,13 +175,25 @@ namespace Pomodoro.Services
                 return;
             }
 
-            player.Load(CurrentStation.StreamUri);
+            LoadCurrentStation();
+        }
+
+        private void LoadCurrentStation()
+        {
+            RadioStation? station = CurrentStation;
+            if (station == null)
+            {
+                return;
+            }
+
+            player.Load(station.StreamUri);
             isStreamLoaded = true;
         }
 
-        private static int ClampStationIndex(int index)
+        private int ClampStationIndex(int index)
         {
-            if (index < 0 || index >= RadioStations.All.Count)
+            int count = Stations.Count;
+            if (count == 0 || index < 0 || index >= count)
             {
                 return 0;
             }
